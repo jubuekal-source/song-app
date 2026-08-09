@@ -199,6 +199,20 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 #stageKeyLabel { font-size: .78rem; color: #99a0ac; min-width: 2.6em; text-align: center; }
 #stageHint { width: 100%; text-align: center; font-size: .75rem; color: #99a0ac; }
 #stageMeasure { position: absolute; visibility: hidden; white-space: pre; pointer-events: none; }
+/* spec/05 — Akkorde im Buehnenmodus antippbar fuer Griffbild-Overlay */
+#stageBody .chordtok { cursor: pointer; }
+
+/* spec/05 — Kapo-Vorschlag-Liste im Dialog */
+.kapo-option {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .5rem 0; border-bottom: 1px solid var(--border);
+}
+.kapo-option:last-child { border-bottom: none; }
+.kapo-best { font-weight: 600; }
+
+/* spec/05 — Griffbild-Overlay */
+#chordDialogBody { display: flex; justify-content: center; padding: .5rem 0; color: var(--text); }
+#chordDialogBody svg { max-width: 100%; height: auto; }
 
 /* spec/02 — Setlists */
 .setlist-row-main { all: unset; cursor: pointer; flex: 1 1 auto; min-width: 0; display: block; }
@@ -290,6 +304,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <span id="stageKeyLabel">±0</span>
     <button type="button" id="stageTransUp" aria-label="Einen Halbton höher">♯</button>
     <button type="button" id="stageWrapBtn" class="on" title="Zeilen an die Bildschirmbreite anpassen" aria-label="Umbruch">⏎</button>
+    <button type="button" id="stageVorsaengerBtn" title="Vorsänger-Modus: nur Text, größere Schrift, keine Akkorde" aria-label="Vorsänger-Modus">👁</button>
     <button type="button" id="stageFsBtn" title="Vollbild" aria-label="Vollbild">⛶</button>
     <span id="stageHint" hidden></span>
   </div>
@@ -348,6 +363,9 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       <label>Kapo
         <input type="number" id="f_kapo" min="0" max="12" step="1">
       </label>
+      <div class="body-tools">
+        <button type="button" id="kapoVorschlagBtn" title="Bund vorschlagen, der die meisten offenen Griffe ergibt">Kapo-Vorschlag</button>
+      </div>
       <label>BPM
         <input type="number" id="f_bpm" min="0" max="400" step="1">
       </label>
@@ -487,6 +505,26 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <div class="dialog-actions">
     <button type="button" id="ats_newBtn">+ Neue Setlist</button>
     <button type="button" id="ats_closeBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/05 — Kapo-Vorschlag -->
+<dialog id="kapoDialog">
+  <h2>Kapo-Vorschlag</h2>
+  <div id="kapoResult"></div>
+  <p class="hint" id="kapoEmptyHint" hidden>Für diesen Song sind keine Akkorde erkennbar — der
+    Kapo-Rechner braucht einen hinterlegten Songtext mit Akkordzeilen.</p>
+  <div class="dialog-actions">
+    <button type="button" id="kapoCloseBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/05 — Griffbild-Overlay -->
+<dialog id="chordDialog">
+  <h2 id="chordDialogTitle"></h2>
+  <div id="chordDialogBody"></div>
+  <div class="dialog-actions">
+    <button type="button" id="chordCloseBtn">Schließen</button>
   </div>
 </dialog>
 
@@ -1525,6 +1563,34 @@ $('f_bodyClean').addEventListener('click', () => {
   $('f_body').value = bereinigeSongtext($('f_body').value);
 });
 
+/* spec/05 §2.4 — Kapo-Vorschlag rechnet auf dem aktuell eingegebenen (ggf. noch
+   ungespeicherten) Songtext, nicht auf dem zuletzt gespeicherten song.body. */
+function openKapoDialog() {
+  const result = kapoScoresFromText($('f_body').value);
+  const resultEl = $('kapoResult');
+  const emptyHint = $('kapoEmptyHint');
+  if (!result) {
+    resultEl.innerHTML = '';
+    emptyHint.hidden = false;
+  } else {
+    emptyHint.hidden = true;
+    resultEl.innerHTML = result.scores.slice(0, 3).map((s, i) => `
+      <div class="kapo-option${i === 0 ? ' kapo-best' : ''}">
+        <span>Bund ${s.bund}${s.bund === 0 ? ' (ohne Kapo)' : ''} — ${s.score}/${result.total} offene Griffe</span>
+        <button type="button" class="kapo-apply" data-bund="${s.bund}">Übernehmen</button>
+      </div>`).join('');
+  }
+  $('kapoDialog').showModal();
+}
+$('kapoVorschlagBtn').addEventListener('click', openKapoDialog);
+$('kapoCloseBtn').addEventListener('click', () => $('kapoDialog').close());
+$('kapoResult').addEventListener('click', (e) => {
+  const btn = e.target.closest('.kapo-apply');
+  if (!btn) return;
+  $('f_kapo').value = btn.dataset.bund;
+  $('kapoDialog').close();
+});
+
 $('btnNewSong').addEventListener('click', () => openSongDialog(null));
 $('emptyNewSongBtn').addEventListener('click', () => openSongDialog(null));
 $('emptyImportBtn').addEventListener('click', () => $('importFileInput').click());
@@ -1801,8 +1867,17 @@ const STAGE = {
   barsTimer: null,
   touch: null,
   transpose: 0,       // Halbtoene, nur Anzeige — der gespeicherte Text bleibt unveraendert
-  wrap: true          // Zeilen an die Bildschirmbreite anpassen (akkordtreu)
+  wrap: true,         // Zeilen an die Bildschirmbreite anpassen (akkordtreu)
+  vorsaenger: false   // spec/05 §4 — nur Text, groessere Schrift, keine Akkordzeilen
 };
+
+const VORSAENGER_FONT_FACTOR = 1.3;
+
+/* spec/05 §4 — aktuelle Schriftgroesse inkl. Vorsaenger-Aufschlag anwenden und Text neu bauen */
+function applyStageFontSize() {
+  const size = (DATA.meta.schriftgroesse || 1) * (STAGE.vorsaenger ? VORSAENGER_FONT_FACTOR : 1);
+  $('stageBody').style.fontSize = size + 'rem';
+}
 
 /* ---------- spec/03 §10 — akkordtreuer Umbruch ----------
    Ohne Umbruch muesste man beim Spielen horizontal scrollen. Ein normaler Wortumbruch
@@ -1909,12 +1984,135 @@ function transposeChordLine(line, steps) {
 
 function stageProcessedBody(song) {
   let lines = String(song.body).split('\n');
-  if (STAGE.transpose) {
+  if (STAGE.transpose && !STAGE.vorsaenger) {
     lines = lines.map(l => isChordLine(l) ? transposeChordLine(l, STAGE.transpose) : l);
   }
+  /* spec/05 §4 — Vorsaenger-Modus: Akkordzeilen komplett entfernen, nicht nur ausblenden,
+     damit der Umbruch (unten) nur noch mit Textzeilen rechnet. */
+  if (STAGE.vorsaenger) lines = lines.filter(l => !isChordLine(l));
   if (STAGE.wrap) lines = reflowLines(lines, stageColumns());
   return lines.join('\n');
 }
+
+/* ---------- spec/05 §2 — Kapo-Rechner ----------
+   Feste Referenzmenge "offene Griffe": die Standard-Anfaengergriffe der Gitarre ohne Barre.
+   Bewertet wird nach Grundton + Dur/Moll, Erweiterungen (7, sus4, ...) werden ignoriert. */
+const OFFENE_GRIFFE_DUR = ['C', 'D', 'E', 'G', 'A'];
+const OFFENE_GRIFFE_MOLL = ['Am', 'Dm', 'Em'];
+
+/* Grundton + Dur/Moll aus einem Akkord-Token lesen. "m" nur als Moll gewertet, wenn nicht
+   Teil von "maj" (sonst waere Cmaj7 faelschlich Moll). */
+function chordRootType(tok) {
+  const m = String(tok || '').match(/^([A-G][#b]?)(m(?!aj))?/);
+  if (!m) return null;
+  return { root: m[1], moll: !!m[2] };
+}
+
+/* Score je Bund 0..7: wie viele der im Songtext vorkommenden Akkorde sind bei diesem Kapo-
+   Bund ein offener Griff aus OFFENE_GRIFFE_*? Mehrfachvorkommen zaehlen mehrfach — ein
+   Refrain-Akkord ist wichtiger als ein einmaliger. Rueckgabe null, wenn keine Akkorde
+   erkennbar sind (Song ohne Text, oder Text ohne erkannte Akkordzeilen). */
+function kapoScoresFromText(bodyText) {
+  const chords = [];
+  String(bodyText || '').split('\n').forEach(line => {
+    if (!isChordLine(line)) return;
+    line.trim().split(/\s+/).forEach(tok => {
+      const c = chordRootType(tok.split('/')[0]);   // Bass-Note nach "/" ignorieren
+      if (c) chords.push(c);
+    });
+  });
+  if (chords.length === 0) return null;
+  const scores = [];
+  for (let b = 0; b <= 7; b++) {
+    let score = 0;
+    chords.forEach(c => {
+      const shifted = shiftNote(c.root, -b);
+      const offen = c.moll ? OFFENE_GRIFFE_MOLL.includes(shifted + 'm') : OFFENE_GRIFFE_DUR.includes(shifted);
+      if (offen) score++;
+    });
+    scores.push({ bund: b, score });
+  }
+  scores.sort((a, b) => b.score - a.score || a.bund - b.bund);   // hoechster Score gewinnt, bei Gleichstand kleinerer Bund
+  return { total: chords.length, scores };
+}
+
+/* ---------- spec/05 §3 — Griffbilder ----------
+   Feste Tabelle, 33 Griffe: 12 Dur-, 12 Moll-Grundakkorde + die 9 gebraeuchlichsten 7er.
+   Je Akkord 6 Werte (tiefe E-Saite zuerst): -1 = nicht gespielt (X), 0 = leere Saite,
+   sonst Bundnummer. Kein Eintrag => im Overlay "Kein Griffbild hinterlegt", nie geraten. */
+const CHORD_SHAPES = {
+  'C':  [-1,3,2,0,1,0], 'C#': [-1,4,6,6,6,4], 'D': [-1,-1,0,2,3,2], 'D#': [-1,-1,1,3,4,3],
+  'E':  [0,2,2,1,0,0],  'F':  [1,3,3,2,1,1],  'F#': [2,4,4,3,2,2],  'G':  [3,2,0,0,0,3],
+  'G#': [4,6,6,5,4,4],  'A':  [-1,0,2,2,2,0], 'A#': [-1,1,3,3,3,1], 'B':  [-1,2,4,4,4,2],
+  'Cm': [-1,3,5,5,4,3], 'C#m':[-1,4,6,6,5,4], 'Dm': [-1,-1,0,2,3,1], 'D#m':[-1,-1,1,3,4,2],
+  'Em': [0,2,2,0,0,0],  'Fm': [1,3,3,1,1,1],  'F#m':[2,4,4,2,2,2],  'Gm': [3,5,5,3,3,3],
+  'G#m':[4,6,6,4,4,4],  'Am': [-1,0,2,2,1,0], 'A#m':[-1,1,3,3,2,1], 'Bm': [-1,2,4,4,3,2],
+  'E7': [0,2,0,1,0,0],  'A7': [-1,0,2,0,2,0], 'D7': [-1,-1,0,2,1,2], 'G7': [3,2,0,0,0,1],
+  'C7': [-1,3,2,3,1,0], 'B7': [-1,2,1,2,0,2], 'Em7':[0,2,0,0,0,0], 'Am7':[-1,0,2,0,1,0],
+  'Dm7':[-1,-1,0,2,1,1]
+};
+
+/* Akkord-Token auf einen Tabellenschluessel normalisieren (b -> #-Schreibweise ueber die
+   bestehende noteIndex/NOTES_SHARP-Tabelle) und NUR bei exaktem Treffer zurueckgeben —
+   keine Annaeherung an einen aehnlichen Akkord, das waere Raten bei Fingersaetzen. */
+function chordShapeKey(tok) {
+  const base = String(tok || '').split('/')[0];
+  const m = base.match(/^([A-G][#b]?)(m(?!aj))?(7)?/);
+  if (!m) return null;
+  const rootIdx = noteIndex(m[1]);
+  if (rootIdx < 0) return null;
+  const root = NOTES_SHARP[rootIdx];
+  const key = root + (m[2] ? 'm' : '') + (m[3] ? '7' : '');
+  return CHORD_SHAPES[key] ? key : null;
+}
+
+/* Griffbild als SVG. Zeigt 4 Buende; liegt der hoechste Finger weiter oben (Barre-Formen
+   wie C#/F#), startet die Anzeige beim niedrigsten belegten Bund und zeigt die Bundnummer an. */
+function renderChordSvg(shape) {
+  const belegte = shape.filter(f => f > 0);
+  const maxFret = belegte.length ? Math.max(...belegte) : 0;
+  const minFret = belegte.length ? Math.min(...belegte) : 0;
+  const startFret = maxFret > 4 ? minFret : 1;
+  const numFrets = 4;
+  const left = 20, top = 24, stringGap = 16, fretGap = 26;
+  let svg = '<svg viewBox="0 0 140 160" width="140" height="160" role="img" aria-label="Griffbild">';
+  for (let s = 0; s < 6; s++) {
+    const x = left + s * stringGap;
+    svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + numFrets * fretGap}" stroke="currentColor" stroke-width="1"/>`;
+  }
+  for (let f = 0; f <= numFrets; f++) {
+    const y = top + f * fretGap;
+    const dicke = (f === 0 && startFret === 1) ? 3 : 1;
+    svg += `<line x1="${left}" y1="${y}" x2="${left + 5 * stringGap}" y2="${y}" stroke="currentColor" stroke-width="${dicke}"/>`;
+  }
+  if (startFret > 1) {
+    svg += `<text x="${left + 5 * stringGap + 6}" y="${top + fretGap / 2 + 4}" font-size="11" fill="currentColor">${startFret}fr</text>`;
+  }
+  shape.forEach((fret, i) => {
+    const x = left + i * stringGap;
+    if (fret === -1) {
+      svg += `<text x="${x}" y="${top - 8}" font-size="12" text-anchor="middle" fill="currentColor">×</text>`;
+    } else if (fret === 0) {
+      svg += `<circle cx="${x}" cy="${top - 12}" r="4" fill="none" stroke="currentColor" stroke-width="1.3"/>`;
+    } else {
+      const rel = fret - startFret + 1;
+      const y = top + (rel - 1) * fretGap + fretGap / 2;
+      svg += `<circle cx="${x}" cy="${y}" r="6" fill="currentColor"/>`;
+    }
+  });
+  svg += '</svg>';
+  return svg;
+}
+
+function openChordDialog(chordText) {
+  $('chordDialogTitle').textContent = chordText;
+  const key = chordShapeKey(chordText);
+  $('chordDialogBody').innerHTML = key
+    ? renderChordSvg(CHORD_SHAPES[key])
+    : '<p class="hint">Kein Griffbild hinterlegt.</p>';
+  $('chordDialog').showModal();
+}
+$('chordCloseBtn').addEventListener('click', () => $('chordDialog').close());
 
 /* Wie viele Monospace-Zeichen passen bei der aktuellen Schriftgroesse nebeneinander? */
 function stageColumns() {
@@ -1959,6 +2157,7 @@ function openStage(ids, index, fromSetlist, keys) {
   STAGE.fromSetlist = !!fromSetlist;
   STAGE.running = false;
   STAGE.transpose = 0;
+  STAGE.vorsaenger = false;
   $('stage').hidden = false;
   document.body.style.overflow = 'hidden';
   stageEnterFullscreen();
@@ -1992,13 +2191,14 @@ function renderStage() {
   $('stageNextBtn').disabled = STAGE.index >= STAGE.ids.length - 1;
 
   const body = $('stageBody');
-  body.style.fontSize = (DATA.meta.schriftgroesse || 1) + 'rem';
+  applyStageFontSize();
   stageFillBody(song);
   body.scrollTop = 0;
   body.scrollLeft = 0;
 
   $('stageKeyLabel').textContent = (STAGE.transpose > 0 ? '+' : '') + STAGE.transpose;
   $('stageWrapBtn').classList.toggle('on', STAGE.wrap);
+  $('stageVorsaengerBtn').classList.toggle('on', STAGE.vorsaenger);
 
   const tempo = Number(song.autoscrollTempo) || 0;
   $('stageTempo').value = tempoZuRegler(tempo);
@@ -2025,9 +2225,22 @@ function tempoZuRegler(tempo) {
    und Transponieren bleiben unveraendert, hier wird nur zeilenweise HTML statt Klartext gebaut. */
 function stageBodyHtml(text) {
   return text.split('\n').map(line => {
-    const safe = esc(line);
-    return isChordLine(line) ? '<span class="chordline">' + safe + '</span>' : safe;
+    return isChordLine(line) ? '<span class="chordline">' + stageChordLineHtml(line) + '</span>' : esc(line);
   }).join('\n');
+}
+
+/* spec/05 §3.2 — jedes Akkord-Token einzeln antippbar machen (Griffbild-Overlay), ohne die
+   Spaltenposition zu veraendern — die Leerzeichen dazwischen bleiben Klartext. */
+function stageChordLineHtml(line) {
+  let out = '', i = 0, m;
+  const re = /\S+/g;
+  while ((m = re.exec(line)) !== null) {
+    out += esc(line.slice(i, m.index));
+    out += '<span class="chordtok" data-chord="' + esc(m[0]) + '">' + esc(m[0]) + '</span>';
+    i = m.index + m[0].length;
+  }
+  out += esc(line.slice(i));
+  return out;
 }
 
 /* Nur den Textbereich neu aufbauen — ohne Scrollposition und Leisten anzufassen */
@@ -2103,6 +2316,7 @@ function stageGoto(delta) {
   stopStageScroll();
   STAGE.index = next;
   STAGE.transpose = 0;
+  STAGE.vorsaenger = false;
   renderStage();
   const song = stageSong();
   if (wasRunning && song && Number(song.autoscrollTempo) > 0) startStageScroll();
@@ -2176,8 +2390,7 @@ $('stageTempo').addEventListener('input', (e) => {
 
 function changeStageFont(delta) {
   DATA.meta.schriftgroesse = clampFontSize((DATA.meta.schriftgroesse || 1) + delta);
-  const body = $('stageBody');
-  body.style.fontSize = DATA.meta.schriftgroesse + 'rem';
+  applyStageFontSize();
   const song = stageSong();
   if (song) stageFillBody(song);          // Umbruch an die neue Schriftgroesse anpassen
   saveData(DATA);
@@ -2190,6 +2403,16 @@ $('stageFontPlus').addEventListener('click', () => changeStageFont(0.1));
 $('stageWrapBtn').addEventListener('click', () => {
   STAGE.wrap = !STAGE.wrap;
   $('stageWrapBtn').classList.toggle('on', STAGE.wrap);
+  const song = stageSong();
+  if (song) stageFillBody(song);
+  showStageBars();
+});
+
+/* spec/05 §4 — Vorsaenger-Modus, rein visuell wie Umbruch/Transponieren */
+$('stageVorsaengerBtn').addEventListener('click', () => {
+  STAGE.vorsaenger = !STAGE.vorsaenger;
+  $('stageVorsaengerBtn').classList.toggle('on', STAGE.vorsaenger);
+  applyStageFontSize();
   const song = stageSong();
   if (song) stageFillBody(song);
   showStageBars();
@@ -2244,6 +2467,8 @@ $('stageBody').addEventListener('click', (e) => {
     if (song && isSafeUrl(song.quelleUrl)) window.open(song.quelleUrl.trim(), '_blank', 'noopener,noreferrer');
     return;
   }
+  const tok = e.target.closest('.chordtok');
+  if (tok) { openChordDialog(tok.dataset.chord); return; }
   showStageBars();
 });
 
