@@ -255,6 +255,25 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 .warning { color: var(--danger); font-size: .9rem; }
 .body-tools { margin: -.4rem 0 .7rem; display: flex; gap: .4rem; flex-wrap: wrap; }
 
+/* spec/11 §2 — Smart-Paste steht im Song-Dialog oben und ist der hervorgehobene Weg;
+   alle bisherigen Felder liegen darunter im Akkordeon #f_fieldsBox. */
+#smartPasteBox {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+#smartPasteBox legend { font-weight: 600; padding: 0 .3rem; }
+#sp_input { width: 100%; box-sizing: border-box; }
+.sp-result { margin: .2rem 0 0; color: var(--text); font-weight: 500; }
+
+#f_fieldsBox { margin: .75rem 0; border: 1px solid var(--border); border-radius: 8px; }
+#f_fieldsBox > summary {
+  cursor: pointer; padding: .6rem .8rem; font-size: .9rem; font-weight: 600;
+  color: var(--text-muted); user-select: none;
+}
+#f_fieldsBox[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: .5rem; }
+#f_fieldsBox > :not(summary) { margin-left: .8rem; margin-right: .8rem; }
+#f_fieldsBox > fieldset { margin-left: .8rem; margin-right: .8rem; }
+
 /* spec/05 — Songtext-Feld auf Wunsch grossflaechig bearbeiten */
 #f_body.body-fullscreen {
   position: fixed; inset: 0; z-index: 200; width: 100vw; height: 100vh;
@@ -487,6 +506,24 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <form id="songForm" novalidate>
     <h2 id="songDialogTitle">Song</h2>
 
+    <!-- spec/11 §2 — erste und offensichtlichste Moeglichkeit: einfuegen statt tippen -->
+    <fieldset id="smartPasteBox">
+      <legend>Song einfügen</legend>
+      <p class="hint">Songseite im Browser markieren, kopieren und hier einfügen — Titel,
+        Interpret, Tonart, Kapo und Akkorde werden dann automatisch erkannt.
+        Nur ein Link geht auch.</p>
+      <textarea id="sp_input" rows="6" class="mono" placeholder="Hier einfügen …"></textarea>
+      <div class="body-tools">
+        <button type="button" id="sp_run" class="primary">✨ Erkennen</button>
+        <button type="button" id="sp_clear">Leeren</button>
+      </div>
+      <p id="sp_result" class="hint sp-result" hidden></p>
+    </fieldset>
+
+    <!-- spec/11 §2.1 — alle bisherigen Felder unveraendert, nur aufklappbar -->
+    <details id="f_fieldsBox">
+      <summary>Alle Felder anzeigen und bearbeiten</summary>
+
     <label>Titel*
       <input type="text" id="f_titel" required maxlength="200">
     </label>
@@ -569,6 +606,8 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
         </div>
       </div>
     </fieldset>
+
+    </details>
 
     <fieldset id="f_historieSection" hidden>
       <legend>Nutzungs-Historie</legend>
@@ -1451,6 +1490,14 @@ function openSongDialog(id) {
   $('f_body').classList.remove('body-fullscreen');   // spec/05 — nie im Vollbild-Zustand oeffnen
   $('f_bodyFsBtn').textContent = '⛶ Groß';
 
+  /* spec/11 §2.2/§3 — Smart-Paste-Feld ist fluechtig: nie gespeichert, nie exportiert,
+     beim Oeffnen immer leer. Akkordeon: beim Anlegen zu (Smart-Paste ist der erste Weg),
+     beim Bearbeiten offen (dort will man gezielt ein Feld aendern). */
+  $('sp_input').value = '';
+  $('sp_result').hidden = true;
+  $('sp_result').textContent = '';
+  $('f_fieldsBox').open = !!song;
+
   $('f_titel').value = song ? song.titel : '';
   $('f_interpret').value = song ? song.interpret : '';
   $('f_alternativTitel').value = song ? (song.alternativTitel || []).join(', ') : '';
@@ -1872,6 +1919,356 @@ $('f_bodyClean').addEventListener('click', () => {
   $('f_body').value = bereinigeSongtext($('f_body').value);
 });
 
+/* ============================================================================
+   spec/11 — Smart-Paste-Songanlage
+   Zerlegt einen eingefuegten Textblock (oder eine einzelne URL) lokal in Felder.
+   KEIN Netzzugriff: die App darf fremde Seiten wegen CORS nicht selbst abrufen,
+   und "kein Scraping" bleibt eine feste Projektentscheidung (spec/11 §1).
+   smartPasteParse() ist bewusst DOM-frei und damit in Node testbar.
+   ========================================================================= */
+
+/* spec/11 §4.2 Schritt 5 — Abschnittsmarke wie [Chorus] oder "Strophe 2".
+   Nicht zu verwechseln mit der Konstante SECTIONS (Export-Abschnitte, spec/00 §4.1). */
+const SECTION_WORT_RE = /^(verse|vers|strophe|chorus|refrain|bridge|intro|outro|pre-?chorus|interlude|zwischenspiel|solo|coda|ending|schluss|teil)$/i;
+
+function isSectionLine(line) {
+  const t = String(line).trim();
+  if (!t) return false;
+  if (/^\[[^\]]+\]$/.test(t)) return true;                 // [Chorus], [Verse 2]
+  const worte = t.replace(/[:.]+$/, '').split(/\s+/);
+  if (worte.length > 3) return false;
+  if (!SECTION_WORT_RE.test(worte[0])) return false;
+  // Restwoerter duerfen nur Zahlen/roemische Ziffern sein: "Strophe 2", "Verse II"
+  return worte.slice(1).every(w => /^([0-9]{1,2}|[ivxIVX]{1,4})$/.test(w));
+}
+
+/* spec/11 §4.1 — Titel/Interpret aus einem URL-Pfad ableiten. Rein mechanisch:
+   fuellt ein leeres Feld mit einem plausiblen Vorschlag, raet aber nichts dazu. */
+const URL_GATTUNGSSEGMENTE = ['tab', 'tabs', 'chords', 'chord', 'song', 'songs', 'lyrics', 'akkorde', 'text', 'print', 'de', 'en', 'www'];
+
+function slugZuText(slug) {
+  return String(slug)
+    .replace(/\.(html?|php)$/i, '')
+    .replace(/-(chords|tabs?|lyrics|akkorde|text)-\d+$/i, '')
+    .replace(/-\d{3,}$/, '')
+    .replace(/-(chords|chord|tabs?|lyrics|akkorde|songtext|text)$/i, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .split(' ')
+    .map(w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w)
+    .join(' ');
+}
+
+function titelAusUrl(url) {
+  let pfad = '';
+  try {
+    pfad = new URL(url).pathname;
+  } catch (e) {
+    pfad = String(url).replace(/^https?:\/\/[^/]*/i, '').split(/[?#]/)[0];
+  }
+  const segmente = pfad.split('/').filter(Boolean);
+  if (!segmente.length) return { titel: '', interpret: '' };
+  const titel = slugZuText(segmente[segmente.length - 1]);
+  let interpret = '';
+  if (segmente.length >= 2) {
+    const vor = segmente[segmente.length - 2];
+    if (URL_GATTUNGSSEGMENTE.indexOf(vor.toLowerCase()) === -1 && !/^\d+$/.test(vor)) {
+      interpret = slugZuText(vor);
+    }
+  }
+  return { titel, interpret };
+}
+
+/* spec/11 §4.2 Schritt 4 — Bracket-ChordPro ("[G]Amazing [C]grace") in das projektweite
+   Format "Akkordzeile ueber Textzeile" umwandeln. Abschnittsmarken wie [Chorus] passen
+   nicht auf CHORD_RE und bleiben deshalb unangetastet. */
+const BRACKET_RE = /\[([^\]]{1,10})\]/g;
+
+function hatBracketAkkorde(text) {
+  BRACKET_RE.lastIndex = 0;
+  let m;
+  while ((m = BRACKET_RE.exec(text)) !== null) {
+    if (CHORD_RE.test(m[1].trim())) return true;
+  }
+  return false;
+}
+
+function bracketZeileTrennen(zeile) {
+  let text = '';
+  const akkorde = [];       // { spalte, name }
+  let i = 0;
+  while (i < zeile.length) {
+    if (zeile[i] === '[') {
+      const ende = zeile.indexOf(']', i);
+      if (ende !== -1) {
+        const inhalt = zeile.slice(i + 1, ende).trim();
+        if (CHORD_RE.test(inhalt)) {
+          akkorde.push({ spalte: text.length, name: inhalt });
+          i = ende + 1;
+          continue;
+        }
+      }
+    }
+    text += zeile[i];
+    i++;
+  }
+  if (!akkorde.length) return { chords: null, text: zeile };
+  let chordZeile = '';
+  akkorde.forEach(a => {
+    const spalte = Math.max(a.spalte, chordZeile.length ? chordZeile.length + 1 : 0);
+    chordZeile += ' '.repeat(spalte - chordZeile.length) + a.name;
+  });
+  return { chords: chordZeile.replace(/\s+$/, ''), text: text.replace(/\s+$/, '') };
+}
+
+function bracketChordProUmwandeln(zeilen) {
+  const raus = [];
+  zeilen.forEach(z => {
+    const { chords, text } = bracketZeileTrennen(z);
+    if (chords === null) { raus.push(text); return; }
+    raus.push(chords);
+    if (text.trim()) raus.push(text);
+  });
+  return raus;
+}
+
+/* spec/11 §4.2 Schritt 3 — beschriftete Metadatenzeilen. Passt der Wert nicht zur Regel,
+   wird das Feld NICHT gesetzt, die Zeile aber trotzdem aus dem Body entfernt. */
+const META_REGELN = [
+  { feld: 'titel',          labels: ['titel', 'title', 'song'],                                  pruef: v => v.length <= 200 ? v : null },
+  { feld: 'interpret',      labels: ['artist', 'interpret', 'künstler', 'kuenstler', 'by', 'von'], pruef: v => v.length <= 100 ? v : null },
+  { feld: 'tonartOriginal', labels: ['key', 'tonart', 'original key', 'originaltonart'],          pruef: v => CHORD_RE.test(v.split(/\s+/)[0]) ? v.split(/\s+/)[0] : null },
+  { feld: 'kapo',           labels: ['capo', 'kapo', 'capodaster'],                               pruef: v => { const m = v.match(/\d+/); const n = m ? parseInt(m[0], 10) : NaN; return (n >= 0 && n <= 12) ? String(n) : null; } },
+  { feld: 'bpm',            labels: ['bpm', 'tempo'],                                             pruef: v => { const m = v.match(/\d+/); const n = m ? parseInt(m[0], 10) : NaN; return (n >= 1 && n <= 400) ? String(n) : null; } },
+  { feld: 'taktart',        labels: ['taktart', 'time', 'time signature'],                        pruef: v => /^\d{1,2}\/\d{1,2}$/.test(v.split(/\s+/)[0]) ? v.split(/\s+/)[0] : null },
+  { feld: 'ccli',           labels: ['ccli', 'ccli-nr', 'ccli-nummer', 'ccli song number'],       pruef: v => { const m = v.match(/\d+/); return m ? m[0] : null; } }
+];
+
+function metaZeileLesen(zeile) {
+  const t = String(zeile).trim();
+  if (!t) return null;
+  for (const regel of META_REGELN) {
+    for (const label of regel.labels) {
+      // "Label: Wert" oder (nur bei Capo/Kapo) "Capo 2"
+      const mitDp = new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:\\-–]\\s*(.+)$', 'i');
+      let m = t.match(mitDp);
+      if (!m && (regel.feld === 'kapo' || regel.feld === 'ccli')) {
+        m = t.match(new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s+(\\S.*)$', 'i'));
+      }
+      if (m) return { feld: regel.feld, wert: regel.pruef(m[1].trim()) };
+    }
+  }
+  return null;
+}
+
+/* spec/11 §4.2 Schritt 7 — Sprache nur bei klarer Mehrheit setzen, sonst leer lassen. */
+const STOPP_DE = ['und', 'der', 'die', 'das', 'ich', 'du', 'nicht', 'ist', 'wir', 'mit', 'dem', 'ein', 'eine', 'auch', 'dich', 'mir'];
+const STOPP_EN = ['and', 'the', 'you', 'are', 'not', 'with', 'your', 'for', 'that', 'this', 'all', 'his', 'her'];
+
+function spracheRaten(body) {
+  const worte = String(body).split('\n')
+    .filter(z => !isChordLine(z))
+    .join(' ')
+    .toLowerCase()
+    .split(/[^a-zà-ÿäöüß]+/)
+    .filter(Boolean);
+  let de = 0, en = 0;
+  worte.forEach(w => {
+    if (STOPP_DE.indexOf(w) !== -1) de++;
+    if (STOPP_EN.indexOf(w) !== -1) en++;
+  });
+  if (de >= 3 && de >= en * 2) return 'de';
+  if (en >= 3 && en >= de * 2) return 'en';
+  return '';
+}
+
+/* spec/11 §4.2 Schritt 6 — Titel/Interpret aus den Kopfzeilen vor dem Songkoerper. */
+const GATTUNG_SUFFIX_RE = /\s+(chords?|tabs?|lyrics|akkorde|songtext|text)$/i;
+
+function titelSaeubern(s) {
+  return String(s).trim().replace(GATTUNG_SUFFIX_RE, '').trim();
+}
+
+/* Navigations-/Menuezeilen aus einer kopierten Seite ("Startseite  Songs  Anmelden").
+   Rein mechanisch: mehrere Leerzeichen am Stueck oder auffaellig viele Woerter. */
+function istNavZeile(zeile) {
+  const t = String(zeile).trim();
+  return /\s{2,}/.test(t) || t.split(/\s+/).length > 8;
+}
+
+function kopfzeilenLesen(kopf) {
+  const zeilen = kopf.map(z => z.trim()).filter(Boolean).slice(0, 8);
+  const raus = { titel: '', interpret: '' };
+  if (!zeilen.length) return raus;
+
+  // Regel 1: irgendeine Kopfzeile der Form "X by Y" / "X von Y"
+  for (const z of zeilen) {
+    const byM = titelSaeubern(z).match(/^(.+?)\s+(?:by|von)\s+(.+)$/i);
+    if (byM && byM[1].trim() && byM[2].trim()) {
+      raus.titel = titelSaeubern(byM[1]);
+      raus.interpret = byM[2].trim();
+      return raus;
+    }
+  }
+
+  // Regel 2: irgendeine Kopfzeile "X - Y" nach der konservativen Regel aus spec/08
+  for (const z of zeilen) {
+    const strichM = titelSaeubern(z).match(/^(.+?)\s+[-–—]\s+(.+)$/);
+    if (!strichM) continue;
+    const rechts = strichM[2].trim();
+    const worte = rechts.split(/\s+/);
+    if (worte.length <= 5 && /^[A-ZÄÖÜ]/.test(rechts) && !/[?!]/.test(rechts)) {
+      raus.titel = titelSaeubern(strichM[1]);
+      raus.interpret = rechts;
+      return raus;
+    }
+  }
+
+  // Regel 3: erste Zeile, die nicht nach Navigation aussieht; danach ggf. der Interpret
+  const echte = zeilen.filter(z => !istNavZeile(z));
+  const kandidaten = echte.length ? echte : zeilen;
+  raus.titel = titelSaeubern(kandidaten[0]);
+  if (kandidaten.length >= 2) {
+    const zweite = kandidaten[1];
+    const worte = zweite.split(/\s+/);
+    if (worte.length <= 5 && !/\d/.test(zweite) && !isSectionLine(zweite) && !isChordLine(zweite)) {
+      raus.interpret = zweite.replace(/^(?:by|von)\s+/i, '').trim();
+    }
+  }
+  return raus;
+}
+
+/* spec/11 §4 — Hauptfunktion. Liefert nur Vorschlaege; das Anwenden auf das Formular
+   (und die Regel "nur leere Felder", §3) passiert in smartPasteAnwenden(). */
+function smartPasteParse(rohtext) {
+  const leer = { titel: '', interpret: '', sprache: '', body: '', quelleUrl: '', medienUrl: '', tonartOriginal: '', kapo: '', bpm: '', taktart: '', ccli: '', modus: 'leer' };
+  const roh = String(rohtext == null ? '' : rohtext).trim();
+  if (!roh) return leer;
+
+  // --- Modus A: nur ein Link ---------------------------------------------
+  if (/^https?:\/\/\S+$/.test(roh)) {
+    const { titel, interpret } = titelAusUrl(roh);
+    return Object.assign({}, leer, { modus: 'url', quelleUrl: roh, titel, interpret });
+  }
+
+  // --- Modus B: Textblock ------------------------------------------------
+  const raus = Object.assign({}, leer, { modus: 'text' });
+  let zeilen = bereinigeSongtext(roh).split('\n');
+
+  // Schritt 2: Links einsammeln (nur Zeilen, die AUSSCHLIESSLICH eine URL sind)
+  zeilen = zeilen.filter(z => {
+    const t = z.trim();
+    if (!/^https?:\/\/\S+$/.test(t)) return true;
+    if (/(youtube\.|youtu\.be|spotify\.|vimeo\.)/i.test(t)) {
+      if (!raus.medienUrl) raus.medienUrl = t;
+    } else if (!raus.quelleUrl) {
+      raus.quelleUrl = t;
+    }
+    return false;
+  });
+
+  // Schritt 3: beschriftete Metadatenzeilen
+  zeilen = zeilen.filter(z => {
+    const treffer = metaZeileLesen(z);
+    if (!treffer) return true;
+    if (treffer.wert !== null && !raus[treffer.feld]) raus[treffer.feld] = treffer.wert;
+    return false;                       // Zeile gehoert nicht in den Songtext
+  });
+
+  // Schritt 4: Bracket-ChordPro umwandeln
+  if (hatBracketAkkorde(zeilen.join('\n'))) zeilen = bracketChordProUmwandeln(zeilen);
+
+  // Schritt 5: Body-Ausschnitt bestimmen
+  let start = -1, lastGood = -1;
+  for (let i = 0; i < zeilen.length; i++) {
+    if (isChordLine(zeilen[i]) || isSectionLine(zeilen[i])) {
+      if (start === -1) start = i;
+      lastGood = i;
+    }
+  }
+  let kopf = zeilen;
+  if (start !== -1) {
+    let end = lastGood;
+    while (end + 1 < zeilen.length && zeilen[end + 1].trim() !== '') end++;
+    raus.body = bereinigeSongtext(zeilen.slice(start, end + 1).join('\n'));
+    kopf = zeilen.slice(0, start);
+  }
+
+  // Schritt 6: Titel/Interpret aus dem Kopf
+  const kopfWerte = kopfzeilenLesen(kopf);
+  if (!raus.titel) raus.titel = kopfWerte.titel;
+  if (!raus.interpret) raus.interpret = kopfWerte.interpret;
+
+  // Schritt 7: Sprache (nur bei klarer Mehrheit)
+  if (raus.body) raus.sprache = spracheRaten(raus.body);
+
+  // Schritt 8: tonartOriginal wird NICHT aus dem ersten Akkord geschaetzt (spec/11 §4.2).
+
+  return raus;
+}
+
+/* spec/11 §3 + §5 — Vorschlaege auf das Formular anwenden. Fuellt ausschliesslich leere
+   Felder; ein bereits eingetragener Wert gewinnt immer (dieselbe Regel wie mergeImport). */
+const SP_FELDER = [
+  { id: 'f_titel',          key: 'titel',          label: 'Titel' },
+  { id: 'f_interpret',      key: 'interpret',      label: 'Interpret' },
+  { id: 'f_sprache',        key: 'sprache',        label: 'Sprache' },
+  { id: 'f_body',           key: 'body',           label: 'Songtext' },
+  { id: 'f_quelleUrl',      key: 'quelleUrl',      label: 'Link' },
+  { id: 'f_medienUrl',      key: 'medienUrl',      label: 'Medien-Link' },
+  { id: 'f_tonartOriginal', key: 'tonartOriginal', label: 'Tonart' },
+  { id: 'f_kapo',           key: 'kapo',           label: 'Kapo' },
+  { id: 'f_bpm',            key: 'bpm',            label: 'BPM' },
+  { id: 'f_taktart',        key: 'taktart',        label: 'Taktart' },
+  { id: 'f_ccli',           key: 'ccli',           label: 'CCLI-Nummer' }
+];
+
+function feldIstLeer(id) {
+  const el = $(id);
+  const v = String(el.value == null ? '' : el.value).trim();
+  if (id === 'f_kapo') return v === '' || v === '0';   // 0 ist die Vorbelegung, kein bewusster Wert
+  return v === '';
+}
+
+function smartPasteAnwenden() {
+  const vorschlag = smartPasteParse($('sp_input').value);
+  const uebernommen = [], uebersprungen = [], fehlend = [];
+
+  SP_FELDER.forEach(f => {
+    const wert = vorschlag[f.key];
+    const leer = feldIstLeer(f.id);
+    if (wert && leer) {
+      $(f.id).value = wert;
+      uebernommen.push(f.key === 'body'
+        ? 'Songtext (' + wert.split('\n').length + ' Zeilen)'
+        : f.label);
+    } else if (wert && !leer) {
+      uebersprungen.push(f.label);
+    } else if (!wert && leer && ['titel', 'interpret', 'tonartOriginal', 'body'].indexOf(f.key) !== -1) {
+      fehlend.push(f.label);
+    }
+  });
+
+  const saetze = [];
+  if (uebernommen.length) saetze.push('Übernommen: ' + uebernommen.join(', ') + '.');
+  else saetze.push('Nichts erkannt. Bitte die Felder unten von Hand ausfüllen.');
+  if (fehlend.length) saetze.push('Nicht erkannt: ' + fehlend.join(', ') + '.');
+  if (uebersprungen.length) saetze.push(uebersprungen.join(' und ') + ' war(en) schon ausgefüllt und wurde(n) nicht verändert.');
+
+  const res = $('sp_result');
+  res.textContent = saetze.join(' ');      // bewusst textContent: Inhalt stammt aus einer Fremdquelle
+  res.hidden = false;
+  $('f_fieldsBox').open = true;            // spec/11 §2.3 — Ergebnis muss sichtbar sein
+}
+
+$('sp_run').addEventListener('click', smartPasteAnwenden);
+$('sp_clear').addEventListener('click', () => {
+  $('sp_input').value = '';
+  $('sp_result').hidden = true;
+  $('sp_input').focus();
+});
+
 /* spec/05 — Textfeld auf Wunsch grossflaechig anzeigen, dieselbe Textarea bleibt bestehen,
    kein zweites Feld zum Synchronisieren. */
 $('f_bodyFsBtn').addEventListener('click', () => {
@@ -2124,6 +2521,8 @@ $('songForm').addEventListener('submit', (e) => {
     const err = $('songFormError');
     err.textContent = 'Titel darf nicht leer sein.';
     err.hidden = false;
+    $('f_fieldsBox').open = true;   // spec/11 §2.3 — sonst liegt das Titelfeld unsichtbar im Akkordeon
+    $('f_titel').focus();
     return;
   }
   if (editingSongId) updateSong(editingSongId, values);
