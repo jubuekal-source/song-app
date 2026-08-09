@@ -156,38 +156,46 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 
 /* ---------- spec/03 — Buehnenmodus ---------- */
 #stage[hidden] { display: none; }
+/* spec/03 §3 — der Text bekommt IMMER die volle Flaeche; die Leisten liegen darueber
+   und verschwinden komplett, statt Platz zu blockieren. */
 #stage {
   position: fixed; inset: 0; z-index: 100;
   background: #07080a; color: #f2f4f7;
-  display: flex; flex-direction: column;
-  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+}
+#stageBody {
+  position: absolute; inset: 0; overflow: auto; overflow-x: auto;
+  white-space: pre; font-family: ui-monospace, "Courier New", monospace;
+  line-height: 1.4; margin: 0;
+  padding: calc(env(safe-area-inset-top) + .35rem) .5rem 45vh .5rem;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
 }
 .stage-bar {
-  display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
-  background: rgba(20,22,28,.92); border-bottom: 1px solid #23262e;
-  transition: opacity .25s ease; flex: 0 0 auto;
+  position: absolute; left: 0; right: 0; z-index: 2;
+  display: flex; align-items: center; gap: .4rem; padding: .4rem .5rem;
+  background: rgba(12,14,18,.94);
+  transition: opacity .2s ease, visibility .2s ease;
 }
-#stageFoot { border-bottom: none; border-top: 1px solid #23262e; flex-wrap: wrap; justify-content: center; }
-#stage.bars-hidden .stage-bar { opacity: 0; pointer-events: none; }
-#stage.bars-hidden #stageCloseBtn { opacity: 1; pointer-events: auto; }
+#stageHead { top: 0; padding-top: calc(env(safe-area-inset-top) + .4rem); border-bottom: 1px solid #23262e; }
+#stageFoot {
+  bottom: 0; padding-bottom: calc(env(safe-area-inset-bottom) + .4rem);
+  border-top: 1px solid #23262e; flex-wrap: wrap; justify-content: center;
+}
+#stage.bars-hidden .stage-bar { opacity: 0; visibility: hidden; pointer-events: none; }
 .stage-bar button {
   background: #1b1e25; color: #f2f4f7; border-color: #2f333c;
+  min-height: 38px; min-width: 38px; padding: .25rem .5rem; font-size: .95rem;
 }
 .stage-bar button.on { background: #4c7dbb; border-color: #4c7dbb; color: #fff; }
 .stage-title { flex: 1 1 auto; min-width: 0; }
 .stage-title .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.stage-title .s { font-size: .8rem; color: #99a0ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#stagePos { font-size: .8rem; color: #99a0ac; flex: 0 0 auto; }
-#stageBody {
-  flex: 1 1 auto; overflow: auto; overflow-x: auto;
-  white-space: pre; font-family: ui-monospace, "Courier New", monospace;
-  line-height: 1.45; padding: 1rem .75rem 40vh .75rem; margin: 0;
-  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
-}
+.stage-title .s { font-size: .78rem; color: #99a0ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#stagePos { font-size: .78rem; color: #99a0ac; flex: 0 0 auto; }
 #stageEmpty { padding: 2rem 1rem; color: #99a0ac; white-space: normal; }
-#stageTempo { width: 110px; flex: 0 0 auto; accent-color: #4c7dbb; }
-#stageTempoLabel { font-size: .8rem; color: #99a0ac; min-width: 3.2em; text-align: right; }
-#stageHint { width: 100%; text-align: center; font-size: .78rem; color: #99a0ac; }
+#stageTempo { width: 120px; flex: 0 0 auto; accent-color: #4c7dbb; }
+#stageTempoLabel { font-size: .78rem; color: #99a0ac; min-width: 3.6em; text-align: right; }
+#stageKeyLabel { font-size: .78rem; color: #99a0ac; min-width: 2.6em; text-align: center; }
+#stageHint { width: 100%; text-align: center; font-size: .75rem; color: #99a0ac; }
+#stageMeasure { position: absolute; visibility: hidden; white-space: pre; pointer-events: none; }
 
 /* spec/02 — Setlists */
 .setlist-row-main { all: unset; cursor: pointer; flex: 1 1 auto; min-width: 0; display: block; }
@@ -228,6 +236,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <button type="button" id="btnSetlists" title="Setlists">🎵 Setlists</button>
     <button type="button" id="btnExport" title="Export">⬇ Export</button>
     <button type="button" id="btnImport" title="Import">⬆ Import</button>
+    <button type="button" id="btnStartpaket" title="23 Workshop-Songs + Setlists nachladen">🎁 Startpaket</button>
   </div>
 </header>
 
@@ -270,10 +279,15 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <pre id="stageBody"></pre>
   <div class="stage-bar" id="stageFoot">
     <button type="button" id="stagePlayBtn" aria-label="Auto-Scroll starten">▶</button>
-    <input type="range" id="stageTempo" min="0" max="120" step="1" value="0" aria-label="Auto-Scroll-Tempo">
+    <input type="range" id="stageTempo" min="0" max="12" step="0.1" value="0" aria-label="Auto-Scroll-Tempo">
     <span id="stageTempoLabel">aus</span>
     <button type="button" id="stageFontMinus" aria-label="Schrift kleiner">A−</button>
     <button type="button" id="stageFontPlus" aria-label="Schrift größer">A+</button>
+    <button type="button" id="stageTransDown" aria-label="Einen Halbton tiefer">♭</button>
+    <span id="stageKeyLabel">±0</span>
+    <button type="button" id="stageTransUp" aria-label="Einen Halbton höher">♯</button>
+    <button type="button" id="stageWrapBtn" class="on" title="Zeilen an die Bildschirmbreite anpassen" aria-label="Umbruch">⏎</button>
+    <button type="button" id="stageFsBtn" title="Vollbild" aria-label="Vollbild">⛶</button>
     <span id="stageHint" hidden></span>
   </div>
 </div>
@@ -1405,6 +1419,7 @@ $('btnNewSong').addEventListener('click', () => openSongDialog(null));
 $('emptyNewSongBtn').addEventListener('click', () => openSongDialog(null));
 $('emptyImportBtn').addEventListener('click', () => $('importFileInput').click());
 $('emptyStartpaketBtn').addEventListener('click', ladeStartpaket);   /* spec/01 §9 */
+$('btnStartpaket').addEventListener('click', ladeStartpaket);
 
 $('searchInput').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
 $('clearTagFilter').addEventListener('click', () => { activeTagFilter = null; render(); });
@@ -1665,8 +1680,136 @@ const STAGE = {
   restPx: 0,          // Sub-Pixel-Rest, damit kleine Tempi nicht ruckeln
   wakeLock: null,
   barsTimer: null,
-  touch: null
+  touch: null,
+  transpose: 0,       // Halbtoene, nur Anzeige — der gespeicherte Text bleibt unveraendert
+  wrap: true          // Zeilen an die Bildschirmbreite anpassen (akkordtreu)
 };
+
+/* ---------- spec/03 §10 — akkordtreuer Umbruch ----------
+   Ohne Umbruch muesste man beim Spielen horizontal scrollen. Ein normaler Wortumbruch
+   wuerde die Akkorde von ihren Silben trennen. Deshalb: Akkordzeile und zugehoerige
+   Textzeile werden IMMER an derselben Spalte geschnitten. */
+
+const CHORD_RE = /^[A-G][#b]?(m|maj|min|dim|aug|sus|add|M)?\d*((sus|add|maj|dim|aug|no|b|#|\+|-)\d*)*(\([^)]*\))?(\/[A-G][#b]?)?$/;
+
+function isChordLine(line) {
+  const toks = line.trim().split(/\s+/).filter(Boolean);
+  if (toks.length === 0) return false;
+  return toks.every(t => CHORD_RE.test(t));
+}
+
+function rtrim(s) { return s.replace(/\s+$/, ''); }
+
+function wrapSingleLine(line, cols) {
+  const out = [];
+  let rest = line;
+  while (rest.length > cols) {
+    let cut = rest.lastIndexOf(' ', cols);
+    if (cut <= 0) cut = cols;
+    out.push(rtrim(rest.slice(0, cut)));
+    rest = rest.slice(cut).replace(/^ +/, '');
+  }
+  out.push(rtrim(rest));
+  return out;
+}
+
+/* Akkordzeile + Textzeile gemeinsam umbrechen. Geschnitten wird nur dort, wo in BEIDEN
+   Zeilen ein Leerzeichen steht — so wird nie ein Akkord zerschnitten. */
+function wrapChordPair(chordLine, lyricLine, cols) {
+  const out = [];
+  let c = chordLine, l = lyricLine;
+  const len = () => Math.max(c.length, l.length);
+  while (len() > cols) {
+    const cPad = c.padEnd(len(), ' ');
+    const lPad = l.padEnd(len(), ' ');
+    let cut = -1;
+    for (let i = cols; i > 0; i--) {
+      if (cPad[i] === ' ' && lPad[i] === ' ') { cut = i; break; }
+    }
+    if (cut <= 0) cut = cols;
+    out.push(rtrim(cPad.slice(0, cut)), rtrim(lPad.slice(0, cut)));
+    c = cPad.slice(cut);
+    l = lPad.slice(cut);
+    while (c.startsWith(' ') && l.startsWith(' ')) { c = c.slice(1); l = l.slice(1); }
+  }
+  out.push(rtrim(c), rtrim(l));
+  return out;
+}
+
+function reflowLines(lines, cols) {
+  if (!cols || cols < 10) return lines;
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const next = lines[i + 1];
+    if (isChordLine(line) && next !== undefined && next.trim() !== '' && !isChordLine(next)) {
+      out.push(...wrapChordPair(line, next, cols));
+      i++;
+    } else {
+      out.push(...wrapSingleLine(line, cols));
+    }
+  }
+  return out;
+}
+
+/* ---------- spec/03 §11 — Transponieren (nur Anzeige) ---------- */
+
+const NOTES_SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const NOTES_FLAT  = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+function noteIndex(n) {
+  let i = NOTES_SHARP.indexOf(n);
+  if (i < 0) i = NOTES_FLAT.indexOf(n);
+  return i;
+}
+
+function shiftNote(note, steps) {
+  const i = noteIndex(note);
+  if (i < 0) return note;
+  const tabelle = note.includes('b') ? NOTES_FLAT : NOTES_SHARP;
+  return tabelle[((i + steps) % 12 + 12) % 12];
+}
+
+function transposeToken(tok, steps) {
+  return tok.replace(/^([A-G][#b]?)/, (m) => shiftNote(m, steps))
+            .replace(/\/([A-G][#b]?)/, (m, b) => '/' + shiftNote(b, steps));
+}
+
+/* Akkorde an ihren Spalten transponieren. Wird ein Akkord laenger (G -> G#), rutschen die
+   folgenden nach rechts; kuerzer werden sie nie ueber ihre Ausgangsspalte hinaus gezogen. */
+function transposeChordLine(line, steps) {
+  let out = '';
+  const re = /\S+/g;
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    const ziel = Math.max(out.length + (out.length ? 1 : 0), m.index);
+    out = out.padEnd(ziel, ' ') + transposeToken(m[0], steps);
+  }
+  return out;
+}
+
+function stageProcessedBody(song) {
+  let lines = String(song.body).split('\n');
+  if (STAGE.transpose) {
+    lines = lines.map(l => isChordLine(l) ? transposeChordLine(l, STAGE.transpose) : l);
+  }
+  if (STAGE.wrap) lines = reflowLines(lines, stageColumns());
+  return lines.join('\n');
+}
+
+/* Wie viele Monospace-Zeichen passen bei der aktuellen Schriftgroesse nebeneinander? */
+function stageColumns() {
+  const body = $('stageBody');
+  const probe = document.createElement('span');
+  probe.id = 'stageMeasure';
+  probe.textContent = 'M'.repeat(50);
+  body.appendChild(probe);
+  const zeichenbreite = probe.getBoundingClientRect().width / 50;
+  probe.remove();
+  if (!zeichenbreite) return 0;
+  const innen = body.clientWidth - 16;   // Padding links/rechts
+  return Math.max(10, Math.floor(innen / zeichenbreite));
+}
 
 function stageSong() { return DATA.songs.find(s => s.id === STAGE.ids[STAGE.index]) || null; }
 
@@ -1696,8 +1839,10 @@ function openStage(ids, index, fromSetlist, keys) {
   STAGE.index = index || 0;
   STAGE.fromSetlist = !!fromSetlist;
   STAGE.running = false;
+  STAGE.transpose = 0;
   $('stage').hidden = false;
   document.body.style.overflow = 'hidden';
+  stageEnterFullscreen();
   renderStage();
   requestStageWakeLock();
   showStageBars();
@@ -1706,6 +1851,7 @@ function openStage(ids, index, fromSetlist, keys) {
 function closeStage() {
   stopStageScroll();
   releaseStageWakeLock();
+  stageExitFullscreen();
   $('stage').hidden = true;
   document.body.style.overflow = '';
   if (STAGE.barsTimer) { clearTimeout(STAGE.barsTimer); STAGE.barsTimer = null; }
@@ -1727,17 +1873,13 @@ function renderStage() {
   $('stageNextBtn').disabled = STAGE.index >= STAGE.ids.length - 1;
 
   const body = $('stageBody');
-  if (song.body && song.body.trim()) {
-    body.textContent = song.body;
-  } else {
-    body.innerHTML = '<div id="stageEmpty">Für diesen Song ist kein Text hinterlegt.' +
-      (isSafeUrl(song.quelleUrl)
-        ? ' <button type="button" id="stageLinkBtn">Chords-Link öffnen</button>'
-        : '') + '</div>';
-  }
   body.style.fontSize = (DATA.meta.schriftgroesse || 1) + 'rem';
+  stageFillBody(song);
   body.scrollTop = 0;
   body.scrollLeft = 0;
+
+  $('stageKeyLabel').textContent = (STAGE.transpose > 0 ? '+' : '') + STAGE.transpose;
+  $('stageWrapBtn').classList.toggle('on', STAGE.wrap);
 
   const tempo = Number(song.autoscrollTempo) || 0;
   $('stageTempo').value = tempo;
@@ -1745,8 +1887,21 @@ function renderStage() {
   updateStagePlayBtn();
 }
 
+/* Nur den Textbereich neu aufbauen — ohne Scrollposition und Leisten anzufassen */
+function stageFillBody(song) {
+  const body = $('stageBody');
+  if (song.body && song.body.trim()) {
+    body.textContent = stageProcessedBody(song);
+  } else {
+    body.innerHTML = '<div id="stageEmpty">Für diesen Song ist kein Text hinterlegt.' +
+      (isSafeUrl(song.quelleUrl)
+        ? ' <button type="button" id="stageLinkBtn">Chords-Link öffnen</button>'
+        : '') + '</div>';
+  }
+}
+
 function updateStageTempoLabel(tempo) {
-  $('stageTempoLabel').textContent = tempo > 0 ? tempo + ' px/s' : 'aus';
+  $('stageTempoLabel').textContent = tempo > 0 ? tempo.toFixed(1) + ' px/s' : 'aus';
 }
 
 function updateStagePlayBtn() {
@@ -1804,6 +1959,7 @@ function stageGoto(delta) {
   const wasRunning = STAGE.running;
   stopStageScroll();
   STAGE.index = next;
+  STAGE.transpose = 0;
   renderStage();
   const song = stageSong();
   if (wasRunning && song && Number(song.autoscrollTempo) > 0) startStageScroll();
@@ -1877,12 +2033,67 @@ $('stageTempo').addEventListener('input', (e) => {
 
 function changeStageFont(delta) {
   DATA.meta.schriftgroesse = clampFontSize((DATA.meta.schriftgroesse || 1) + delta);
-  $('stageBody').style.fontSize = DATA.meta.schriftgroesse + 'rem';
+  const body = $('stageBody');
+  body.style.fontSize = DATA.meta.schriftgroesse + 'rem';
+  const song = stageSong();
+  if (song) stageFillBody(song);          // Umbruch an die neue Schriftgroesse anpassen
   saveData(DATA);
   showStageBars();
 }
 $('stageFontMinus').addEventListener('click', () => changeStageFont(-0.1));
 $('stageFontPlus').addEventListener('click', () => changeStageFont(0.1));
+
+/* spec/03 §10 — Umbruch an/aus */
+$('stageWrapBtn').addEventListener('click', () => {
+  STAGE.wrap = !STAGE.wrap;
+  $('stageWrapBtn').classList.toggle('on', STAGE.wrap);
+  const song = stageSong();
+  if (song) stageFillBody(song);
+  showStageBars();
+});
+
+/* spec/03 §11 — Transponieren, rein visuell */
+function changeStageTranspose(delta) {
+  STAGE.transpose = ((STAGE.transpose + delta + 6 + 12) % 12) - 6;   // Bereich -6 … +5
+  $('stageKeyLabel').textContent = (STAGE.transpose > 0 ? '+' : '') + STAGE.transpose;
+  const song = stageSong();
+  if (song) stageFillBody(song);
+  showStageBars();
+}
+$('stageTransUp').addEventListener('click', () => changeStageTranspose(1));
+$('stageTransDown').addEventListener('click', () => changeStageTranspose(-1));
+$('stageKeyLabel').addEventListener('click', () => {
+  STAGE.transpose = 0;
+  $('stageKeyLabel').textContent = '±0';
+  const song = stageSong();
+  if (song) stageFillBody(song);
+  showStageBars();
+});
+
+/* spec/03 §3 — echtes Vollbild, damit die Browserleiste verschwindet */
+function stageEnterFullscreen() {
+  const el = document.documentElement;
+  const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (fn) { try { fn.call(el); } catch (e) {} }
+}
+function stageExitFullscreen() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    const fn = document.exitFullscreen || document.webkitExitFullscreen;
+    if (fn) { try { fn.call(document); } catch (e) {} }
+  }
+}
+$('stageFsBtn').addEventListener('click', () => {
+  if (document.fullscreenElement || document.webkitFullscreenElement) stageExitFullscreen();
+  else stageEnterFullscreen();
+  showStageBars();
+});
+
+/* Dreht sich das Geraet oder aendert sich die Breite, muss der Umbruch neu berechnet werden */
+window.addEventListener('resize', () => {
+  if (!stageIsOpen()) return;
+  const song = stageSong();
+  if (song && STAGE.wrap) stageFillBody(song);
+});
 
 $('stageBody').addEventListener('click', (e) => {
   if (e.target.id === 'stageLinkBtn') {
