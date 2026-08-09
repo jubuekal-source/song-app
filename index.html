@@ -1,0 +1,1959 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#20242c">
+<title>Song-App</title>
+<style>
+:root {
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --text: #1c1f26;
+  --text-muted: #6b7280;
+  --border: #e2e4e9;
+  --accent: #4c7dbb;
+  --danger: #c0392b;
+  --star: #c8862a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161b;
+    --surface: #1e2128;
+    --text: #eceef2;
+    --text-muted: #9aa1ad;
+    --border: #2c303a;
+    --accent: #6d9bd6;
+    --danger: #e0685a;
+    --star: #e0a458;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: .75rem 1rem;
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+}
+header h1 { font-size: 1.1rem; margin: 0; flex: 1 0 auto; }
+.header-actions { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; flex: 2 1 100%; }
+.header-actions input[type=search] { flex: 1 1 160px; min-width: 120px; }
+button {
+  min-height: 44px; min-width: 44px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); color: var(--text);
+  font-size: 1rem; padding: .4rem .7rem; cursor: pointer;
+}
+button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+button.danger { color: var(--danger); border-color: var(--danger); }
+input, textarea, select {
+  font-size: 16px; padding: .5rem; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--surface); color: var(--text); width: 100%;
+}
+textarea.mono { font-family: ui-monospace, "Courier New", monospace; }
+
+#tagFilterIndicator, #reminderBanner {
+  padding: .5rem 1rem; background: var(--surface); border-bottom: 1px solid var(--border);
+  display: flex; gap: .5rem; align-items: center; font-size: .9rem;
+}
+
+main { padding: 1rem; max-width: 900px; margin: 0 auto; }
+
+#songList { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: .75rem; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: .75rem; display: flex; flex-direction: column; gap: .5rem;
+}
+.card-main {
+  all: unset; cursor: pointer; display: block; box-sizing: border-box; width: 100%;
+}
+.card-title { font-weight: 600; }
+.card-sub { color: var(--text-muted); font-size: .9rem; }
+.card-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+.chip {
+  border: none; border-radius: 999px; padding: .15rem .6rem; font-size: .75rem;
+  background: color-mix(in srgb, var(--chip-color, var(--accent)) 25%, transparent);
+  color: var(--text); min-height: auto; min-width: auto;
+}
+/* spec/03 — Akkordzeilen duerfen NIE umbrechen, sonst rutschen Akkorde weg.
+   Statt Zeilenumbruch: horizontal scrollen. */
+.raw-body {
+  white-space: pre; background: var(--bg); border: 1px solid var(--border);
+  border-radius: 6px; padding: .5rem; font-size: .85rem; max-height: 300px;
+  overflow: auto; overflow-x: auto; margin: 0;
+  font-family: ui-monospace, "Courier New", monospace;
+  -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
+}
+.card-controls { display: flex; align-items: center; gap: .2rem; }
+.stars { display: flex; }
+.stars .star, .card-controls .fav {
+  all: unset; cursor: pointer; font-size: 1.15rem; padding: .2rem; color: var(--star);
+  min-width: 32px; min-height: 32px; text-align: center; box-sizing: border-box;
+}
+.fav.active { color: var(--danger); }
+details.menu { position: relative; margin-left: auto; }
+details.menu summary { list-style: none; cursor: pointer; padding: .3rem .6rem; border-radius: 8px; }
+details.menu summary::-webkit-details-marker { display: none; }
+details.menu .menu-items {
+  position: absolute; right: 0; top: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; display: flex; flex-direction: column; min-width: 150px; z-index: 5;
+  box-shadow: 0 4px 12px rgba(0,0,0,.15);
+}
+details.menu .menu-items button { border: none; text-align: left; border-radius: 0; white-space: nowrap; }
+/* spec/03 — Menue nach oben klappen, wenn unten kein Platz ist */
+details.menu .menu-items.menu-up { top: auto; bottom: 100%; }
+
+#emptyState { text-align: center; padding: 2rem 1rem; color: var(--text-muted); }
+.empty-actions { display: flex; gap: .5rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap; }
+.no-results { color: var(--text-muted); text-align: center; }
+
+dialog {
+  border: none; border-radius: 12px; padding: 1rem; width: min(600px, 92vw); max-height: 90vh;
+  overflow: auto; background: var(--surface); color: var(--text);
+}
+dialog::backdrop { background: rgba(0,0,0,.5); }
+dialog h2 { margin-top: 0; }
+dialog form label { display: block; margin: .5rem 0; font-size: .9rem; }
+dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .75rem 0; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+.error { color: var(--danger); }
+.hint { color: var(--text-muted); font-size: .9rem; }
+
+.tag-picker { margin-top: .5rem; }
+.chip-checkbox {
+  display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; margin: .2rem .2rem 0 0;
+  border-radius: 999px; background: color-mix(in srgb, var(--chip-color, var(--accent)) 20%, transparent);
+  font-size: .85rem;
+}
+.tag-add { display: flex; gap: .4rem; margin-top: .5rem; align-items: center; }
+.tag-add input[type=text] { flex: 1 1 auto; min-width: 0; width: auto; }
+.tag-add input[type=color] { flex: 0 0 auto; width: 44px; padding: 0; }
+.tag-add button { flex: 0 0 auto; white-space: nowrap; }
+
+.trash-row, .tag-manage-row {
+  display: flex; align-items: center; gap: .5rem; padding: .5rem 0; border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.tag-manage-row input[type=text] { flex: 1 1 100px; }
+.tag-manage-row input[type=color] { width: 44px; padding: 0; flex: 0 0 auto; }
+
+.warning { color: var(--danger); font-size: .9rem; }
+
+/* ---------- spec/03 — Buehnenmodus ---------- */
+#stage[hidden] { display: none; }
+#stage {
+  position: fixed; inset: 0; z-index: 100;
+  background: #07080a; color: #f2f4f7;
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+}
+.stage-bar {
+  display: flex; align-items: center; gap: .5rem; padding: .5rem .75rem;
+  background: rgba(20,22,28,.92); border-bottom: 1px solid #23262e;
+  transition: opacity .25s ease; flex: 0 0 auto;
+}
+#stageFoot { border-bottom: none; border-top: 1px solid #23262e; flex-wrap: wrap; justify-content: center; }
+#stage.bars-hidden .stage-bar { opacity: 0; pointer-events: none; }
+#stage.bars-hidden #stageCloseBtn { opacity: 1; pointer-events: auto; }
+.stage-bar button {
+  background: #1b1e25; color: #f2f4f7; border-color: #2f333c;
+}
+.stage-bar button.on { background: #4c7dbb; border-color: #4c7dbb; color: #fff; }
+.stage-title { flex: 1 1 auto; min-width: 0; }
+.stage-title .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stage-title .s { font-size: .8rem; color: #99a0ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#stagePos { font-size: .8rem; color: #99a0ac; flex: 0 0 auto; }
+#stageBody {
+  flex: 1 1 auto; overflow: auto; overflow-x: auto;
+  white-space: pre; font-family: ui-monospace, "Courier New", monospace;
+  line-height: 1.45; padding: 1rem .75rem 40vh .75rem; margin: 0;
+  -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+}
+#stageEmpty { padding: 2rem 1rem; color: #99a0ac; white-space: normal; }
+#stageTempo { width: 110px; flex: 0 0 auto; accent-color: #4c7dbb; }
+#stageTempoLabel { font-size: .8rem; color: #99a0ac; min-width: 3.2em; text-align: right; }
+#stageHint { width: 100%; text-align: center; font-size: .78rem; color: #99a0ac; }
+
+/* spec/02 — Setlists */
+.setlist-row-main { all: unset; cursor: pointer; flex: 1 1 auto; min-width: 0; display: block; }
+
+.setlist-entries { display: flex; flex-direction: column; gap: .4rem; margin: .75rem 0; }
+.setlist-entry {
+  display: flex; align-items: center; gap: .5rem; padding: .5rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+}
+.setlist-entry.dragging { position: relative; z-index: 5; opacity: .7; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
+.drag-handle {
+  cursor: grab; touch-action: none; color: var(--text-muted); font-size: 1.2rem;
+  min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center;
+}
+.entry-main { flex: 1 1 auto; min-width: 0; }
+.entry-title { font-weight: 600; }
+.entry-sub { color: var(--text-muted); font-size: .85rem; }
+.entry-key { display: flex; align-items: center; gap: .3rem; }
+.entry-key input[type=text] { width: 4rem; text-align: center; padding: .3rem; }
+.key-badge { all: unset; cursor: pointer; color: var(--accent); font-size: .9rem; padding: .2rem; }
+
+.song-picker-results { display: flex; flex-direction: column; gap: .3rem; max-height: 220px; overflow: auto; margin-top: .5rem; }
+.song-picker-row {
+  display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+  padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 6px; font-size: .9rem;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1 id="appTitle">Song-App</h1>
+  <div class="header-actions">
+    <button type="button" id="btnNewSong">+ Song</button>
+    <input type="search" id="searchInput" placeholder="Suche…" aria-label="Songs durchsuchen">
+    <button type="button" id="btnTrash" title="Papierkorb">🗑</button>
+    <button type="button" id="btnTags" title="Tags verwalten">🏷</button>
+    <button type="button" id="btnSetlists" title="Setlists">🎵 Setlists</button>
+    <button type="button" id="btnExport" title="Export">⬇ Export</button>
+    <button type="button" id="btnImport" title="Import">⬆ Import</button>
+  </div>
+</header>
+
+<div id="tagFilterIndicator" hidden>
+  Gefiltert nach <strong class="tag-filter-name"></strong>
+  <button type="button" id="clearTagFilter">✕</button>
+</div>
+
+<div id="reminderBanner" hidden>
+  Letzter Export ist eine Weile her.
+  <button type="button" id="reminderExportBtn">Jetzt exportieren</button>
+</div>
+
+<main>
+  <div id="songList"></div>
+  <div id="emptyState" hidden>
+    <p class="empty-msg">Noch keine Songs.</p>
+    <div class="empty-actions">
+      <button type="button" id="emptyStartpaketBtn">Startpaket laden</button>
+      <button type="button" id="emptyImportBtn">Datei importieren</button>
+      <button type="button" id="emptyNewSongBtn" class="primary">Song anlegen</button>
+    </div>
+  </div>
+</main>
+
+<input type="file" id="importFileInput" accept="application/json,.json" hidden>
+
+<!-- spec/03 §3 — Buehnenmodus -->
+<div id="stage" hidden>
+  <div class="stage-bar" id="stageHead">
+    <button type="button" id="stagePrevBtn" aria-label="Vorheriger Song">‹</button>
+    <div class="stage-title">
+      <div class="t" id="stageTitle"></div>
+      <div class="s" id="stageSub"></div>
+    </div>
+    <span id="stagePos"></span>
+    <button type="button" id="stageNextBtn" aria-label="Nächster Song">›</button>
+    <button type="button" id="stageCloseBtn" aria-label="Bühnenmodus schließen">✕</button>
+  </div>
+  <pre id="stageBody"></pre>
+  <div class="stage-bar" id="stageFoot">
+    <button type="button" id="stagePlayBtn" aria-label="Auto-Scroll starten">▶</button>
+    <input type="range" id="stageTempo" min="0" max="120" step="1" value="0" aria-label="Auto-Scroll-Tempo">
+    <span id="stageTempoLabel">aus</span>
+    <button type="button" id="stageFontMinus" aria-label="Schrift kleiner">A−</button>
+    <button type="button" id="stageFontPlus" aria-label="Schrift größer">A+</button>
+    <span id="stageHint" hidden></span>
+  </div>
+</div>
+
+<!-- spec/01 §7 -->
+<dialog id="songDialog">
+  <form id="songForm" novalidate>
+    <h2 id="songDialogTitle">Song</h2>
+
+    <label>Titel*
+      <input type="text" id="f_titel" required maxlength="200">
+    </label>
+    <label>Interpret
+      <input type="text" id="f_interpret" maxlength="200">
+    </label>
+    <label>Alternativtitel (Komma-getrennt)
+      <input type="text" id="f_alternativTitel">
+    </label>
+    <label>Sprache
+      <input type="text" id="f_sprache" list="spracheOptions" maxlength="20">
+      <datalist id="spracheOptions">
+        <option value="de"></option>
+        <option value="en"></option>
+        <option value="mix"></option>
+      </datalist>
+    </label>
+
+    <fieldset>
+      <legend>Inhalt</legend>
+      <label>Songtext / ChordPro
+        <textarea id="f_body" rows="6" class="mono"></textarea>
+      </label>
+      <label>Externer Link (Chords)
+        <input type="url" id="f_quelleUrl" placeholder="https://…">
+      </label>
+      <label>Notiz zur Quelle
+        <input type="text" id="f_quelleNotiz">
+      </label>
+      <label>Medien-Link (YouTube/Spotify)
+        <input type="url" id="f_medienUrl" placeholder="https://…">
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Musikalisches</legend>
+      <label>Tonart Original
+        <input type="text" id="f_tonartOriginal" maxlength="10">
+      </label>
+      <label>Tonart, wie wir sie singen
+        <input type="text" id="f_tonartWir" maxlength="10">
+      </label>
+      <label>Kapo
+        <input type="number" id="f_kapo" min="0" max="12" step="1">
+      </label>
+      <label>BPM
+        <input type="number" id="f_bpm" min="0" max="400" step="1">
+      </label>
+      <label>Taktart
+        <input type="text" id="f_taktart" maxlength="10">
+      </label>
+      <label>Dauer (Sekunden)
+        <input type="number" id="f_dauerSek" min="0" step="1">
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Organisation</legend>
+      <div class="stars" id="f_starsRow"></div>
+      <label class="inline"><input type="checkbox" id="f_favorit" style="width:auto"> Favorit</label>
+      <label>Notiz
+        <textarea id="f_notiz" rows="3"></textarea>
+      </label>
+      <label>CCLI-Nummer
+        <input type="text" id="f_ccli" maxlength="30">
+      </label>
+
+      <div class="tag-picker">
+        <div id="f_tagCheckboxes"></div>
+        <div class="tag-add">
+          <input type="text" id="f_newTag" placeholder="Neuer Tag">
+          <button type="button" id="f_addTagBtn">Hinzufügen</button>
+        </div>
+      </div>
+    </fieldset>
+
+    <p id="songFormError" class="error" hidden></p>
+
+    <div class="dialog-actions">
+      <button type="button" id="songDeleteBtn" class="danger" hidden>Löschen</button>
+      <button type="button" id="songCancelBtn">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- spec/01 §9 -->
+<dialog id="trashDialog">
+  <h2>Papierkorb</h2>
+  <div id="trashList"></div>
+  <p class="hint">Einträge werden nach 30 Tagen automatisch endgültig gelöscht.</p>
+  <div class="dialog-actions">
+    <button type="button" id="trashCloseBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/01 §8 -->
+<dialog id="tagsDialog">
+  <h2>Tags verwalten</h2>
+  <div id="tagsManagerList"></div>
+  <div class="dialog-actions">
+    <button type="button" id="tagsCloseBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/01 §10 -->
+<dialog id="importDialog">
+  <h2>Import</h2>
+  <div id="importPreview"></div>
+  <p class="warning">Das ersetzt <strong>alle</strong> aktuellen Daten unwiderruflich. Vorher ggf. exportieren.</p>
+  <div class="dialog-actions">
+    <button type="button" id="importCancelBtn">Abbrechen</button>
+    <button type="button" id="importConfirmBtn" class="danger">Wirklich ersetzen</button>
+  </div>
+</dialog>
+
+<!-- spec/02 §3.1 -->
+<dialog id="setlistsDialog">
+  <h2>Setlists</h2>
+  <button type="button" id="btnNewSetlist" class="primary">+ Neue Setlist</button>
+  <div id="setlistsList"></div>
+  <div class="dialog-actions">
+    <button type="button" id="setlistsCloseBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/02 §3.1 -->
+<dialog id="setlistFormDialog">
+  <form id="setlistForm" novalidate>
+    <h2 id="setlistFormTitle">Setlist</h2>
+    <label>Name*
+      <input type="text" id="sf_name" required maxlength="200">
+    </label>
+    <label>Anlass
+      <input type="text" id="sf_anlass" maxlength="100">
+    </label>
+    <label>Datum
+      <input type="date" id="sf_datum">
+    </label>
+    <label>Notiz
+      <textarea id="sf_notiz" rows="2"></textarea>
+    </label>
+    <p id="setlistFormError" class="error" hidden></p>
+    <div class="dialog-actions">
+      <button type="button" id="setlistDeleteBtn" class="danger" hidden>Löschen</button>
+      <button type="button" id="setlistCancelBtn">Abbrechen</button>
+      <button type="submit" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- spec/02 §3.2–3.6 -->
+<dialog id="setlistDetailDialog">
+  <h2 id="sd_name"></h2>
+  <p class="card-sub" id="sd_meta"></p>
+  <p class="hint" id="sd_dauer" hidden></p>
+  <button type="button" id="sd_startBtn" class="primary">▶ Starten</button>
+  <button type="button" id="sd_editBtn">Details bearbeiten</button>
+
+  <div class="setlist-entries" id="setlistEntries"></div>
+
+  <fieldset>
+    <legend>Song hinzufügen</legend>
+    <input type="search" id="setlistSongPickerInput" placeholder="Song suchen…" aria-label="Song suchen">
+    <div class="song-picker-results" id="setlistSongPickerResults"></div>
+  </fieldset>
+
+  <div class="dialog-actions">
+    <button type="button" id="setlistDetailCloseBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/02 §3.2 -->
+<dialog id="addToSetlistDialog">
+  <h2>Zu Setlist hinzufügen</h2>
+  <p class="card-sub" id="ats_songTitle"></p>
+  <div id="ats_list"></div>
+  <div class="dialog-actions">
+    <button type="button" id="ats_newBtn">+ Neue Setlist</button>
+    <button type="button" id="ats_closeBtn">Schließen</button>
+  </div>
+</dialog>
+
+<script>
+/* ============================================================
+   Song-App — spec/01 Grundgerüst
+   Reihenfolge: Datenmodell/Helper -> Render -> Event-Handler -> Init
+   ============================================================ */
+
+/* spec/00 §3.1 */
+const LS_PREFIX = 'songapp_';
+const LS_KEY = LS_PREFIX + 'data';
+
+/* spec/00 §4.1 — deklarativ, wird ab spec/07 (selektiver Import) genutzt */
+const SECTIONS = {
+  tags: { label: 'Tags', refs: [] },
+  songs: { label: 'Songs', refs: ['tags'] },
+  setlists: { label: 'Setlists', refs: ['songs'] },
+  historie: { label: 'Historie', refs: ['songs', 'setlists'] }
+};
+
+const TAG_PALETTE = ['#4c7dbb', '#e0a458', '#7a9e7e', '#8f8fb0', '#c26b5a', '#d4a76a', '#6b9080', '#a05c7b'];
+
+/* Kurzform document.getElementById */
+function $(id) { return document.getElementById(id); }
+
+/* spec/01 §3 — sichere UUID auch ohne crypto.randomUUID (z. B. altes file://-Setup) */
+function uuid() {
+  if (window.crypto && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
+function nowIso() { return new Date().toISOString(); }
+
+function fmtDate(iso) {
+  try { return new Date(iso).toLocaleDateString('de-DE'); }
+  catch (e) { return iso || ''; }
+}
+
+/* HTML-Escaping für alle interpolierten Nutzerdaten (Text- und Attribut-Kontext) */
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function isSafeUrl(u) {
+  return typeof u === 'string' && /^https?:\/\//i.test(u.trim());
+}
+
+/* ---------- Datenmodell (spec/00 §3, spec/01 §3) ---------- */
+
+function defaultSong() {
+  const t = nowIso();
+  return {
+    id: uuid(),
+    titel: '', interpret: '', alternativTitel: [], sprache: '',
+    body: '', quelleUrl: '', quelleNotiz: '', medienUrl: '',
+    tonartOriginal: '', tonartWir: '', kapo: 0, bpm: null, taktart: '', dauerSek: null,
+    tagIds: [], bewertung: 0, favorit: false, notiz: '', ccli: '',
+    autoscrollTempo: null, erstelltAm: t, geaendertAm: t
+  };
+}
+
+function defaultData() {
+  return {
+    schemaVersion: 1,
+    meta: {
+      titel: 'Meine Songs', besitzer: '', theme: 'system',
+      schriftgroesse: 1.0, zuletztExport: null, aenderungenSeitExport: 0
+    },
+    songs: [], setlists: [], historie: [], tags: [], papierkorb: []
+  };
+}
+
+/* spec/01 §3 — einzige Stelle für Migrationen, füllt fehlende Felder auf */
+function normalizeSong(raw) {
+  return { ...defaultSong(), ...raw };
+}
+
+function normalizeTag(raw) {
+  return {
+    id: raw.id || uuid(),
+    name: raw.name || '',
+    farbe: raw.farbe || randomTagColor(),
+    gruppe: raw.gruppe || ''
+  };
+}
+
+function normalizeData(raw) {
+  const base = defaultData();
+  if (!raw || typeof raw !== 'object') return base;
+  return {
+    schemaVersion: raw.schemaVersion ?? base.schemaVersion,
+    meta: { ...base.meta, ...(raw.meta || {}) },
+    songs: Array.isArray(raw.songs) ? raw.songs.map(normalizeSong) : [],
+    setlists: Array.isArray(raw.setlists) ? raw.setlists.map(normalizeSetlist) : [],
+    historie: Array.isArray(raw.historie) ? raw.historie : [],
+    tags: Array.isArray(raw.tags) ? raw.tags.map(normalizeTag) : [],
+    papierkorb: Array.isArray(raw.papierkorb) ? raw.papierkorb : []
+  };
+}
+
+/* spec/01 §3 — Stub: aktuell kein alter Prefix im Umlauf */
+function migrateOldKeys() {
+  // bisher nichts zu migrieren
+}
+
+function loadData() {
+  migrateOldKeys();
+  let raw = null;
+  try { raw = JSON.parse(localStorage.getItem(LS_KEY)); }
+  catch (e) { raw = null; }
+  return normalizeData(raw);
+}
+
+function saveData(data) {
+  localStorage.setItem(LS_KEY, JSON.stringify(data));
+}
+
+/* spec/01 §3 — jede Mutation läuft hier durch: persistiert, zählt, rendert */
+function commit() {
+  DATA.meta.aenderungenSeitExport = (DATA.meta.aenderungenSeitExport || 0) + 1;
+  saveData(DATA);
+  render();
+}
+
+/* ---------- Startpaket (spec/01 §9) ----------
+   Nur Titel, Interpret und externe Chords-Links — bewusst KEINE geschuetzten Songtexte.
+   Links geprueft am 07.08.2026, Quelle: Workshop_Songs_Chords.md */
+const STARTPAKET_TAGS = [
+  { n: 'Workshop', f: '#4c7dbb' }, { n: 'Lagerfeuer', f: '#e0a458' },
+  { n: 'Lobpreis', f: '#7a9e7e' }, { n: 'Ruhig', f: '#8f8fb0' },
+  { n: 'Kraftvoll', f: '#c26b5a' }, { n: 'Mitsing-Refrain', f: '#d4a76a' }
+];
+
+const STARTPAKET_SONGS = [
+  { t: "Good Good Father", i: "Chris Tomlin", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/chris-tomlin/good-good-father-chords-1772968", tg: ["Workshop", "Lobpreis"] },
+  { t: "Who You Say I Am", i: "Hillsong Worship", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/hillsong-worship/who-you-say-i-am-chords-2240451", tg: ["Workshop", "Lobpreis"] },
+  { t: "The Blessing", i: "Kari Jobe", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/kari-jobe/the-blessing-chords-3074522", tg: ["Workshop", "Lobpreis"] },
+  { t: "Goodness of God", i: "Bethel Music", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/bethel-music/goodness-of-god-chords-2423013", tg: ["Workshop", "Lobpreis"] },
+  { t: "Run to the Father", i: "Cody Carnes", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/cody-carnes/run-to-the-father-chords-2776012", tg: ["Workshop", "Lobpreis"] },
+  { t: "Reckless Love", i: "Cory Asbury", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/cory-asbury/reckless-love-chords-1973471", tg: ["Workshop", "Lobpreis"] },
+  { t: "Gratitude", i: "Brandon Lake", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/brandon-lake/gratitude-chords-3313037", tg: ["Workshop", "Lobpreis"] },
+  { t: "Oceans (Where Feet May Fail)", i: "Hillsong UNITED", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/hillsong-united/oceans-where-feet-may-fail-chords-2134901", tg: ["Workshop", "Lobpreis"] },
+  { t: "Mutig komm ich vor den Thron", i: "Outbreakband", sp: "de", u: "https://tabs.ultimate-guitar.com/tab/rend-collective/mutig-komm-ich-vor-den-thron-chords-1957127", tg: ["Workshop", "Lobpreis"] },
+  { t: "Living Hope", i: "Phil Wickham", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/phil-wickham/living-hope-chords-2355357", tg: ["Workshop", "Lobpreis"] },
+  { t: "Yet Not I But Through Christ in Me", i: "CityAlight", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/cityalight/yet-not-i-but-through-christ-in-me-chords-2519202", tg: ["Workshop", "Lobpreis"] },
+  { t: "King of My Heart", i: "Bethel Music", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/bethel-music/king-of-my-heart-chords-2369213", tg: ["Workshop", "Lobpreis"] },
+  { t: "You Say", i: "Lauren Daigle", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/lauren-daigle/you-say-chords-2426329", tg: ["Workshop"] },
+  { t: "Rescue", i: "Lauren Daigle", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/lauren-daigle/rescue-chords-3034233", tg: ["Workshop"] },
+  { t: "Trust in You", i: "Lauren Daigle", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/lauren-daigle/trust-in-you-chords-1707265", tg: ["Workshop"] },
+  { t: "Let It Be A Hallelujah", i: "Lauren Daigle", sp: "en", u: "https://es.ultimate-guitar.com/tab/lauren-daigle/let-it-be-a-hallelujah-chords-5898450", tg: ["Workshop"] },
+  { t: "How Can It Be", i: "Lauren Daigle", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/lauren-daigle/how-can-it-be-chords-1517830", tg: ["Workshop"] },
+  { t: "My Lighthouse", i: "Rend Collective", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/rend-collective/my-lighthouse-chords-1667557", tg: ["Lagerfeuer", "Mitsing-Refrain", "Kraftvoll"] },
+  { t: "Build Your Kingdom Here", i: "Rend Collective", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/rend-collective/build-your-kingdom-here-chords-1217968", tg: ["Lagerfeuer", "Kraftvoll"] },
+  { t: "Counting Every Blessing", i: "Rend Collective", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/rend-collective/counting-every-blessing-chords-2275865", tg: ["Lagerfeuer", "Mitsing-Refrain"] },
+  { t: "Joy of the Lord", i: "Rend Collective", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/rend-collective/joy-of-the-lord-chords-1762418", tg: ["Lagerfeuer", "Kraftvoll"] },
+  { t: "Free As A Bird", i: "Rend Collective", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/rend-collective/free-as-a-bird-chords-1762411", tg: ["Lagerfeuer", "Mitsing-Refrain"] },
+  { t: "Rescuer (Good News)", i: "Rend Collective", sp: "en", u: "https://tabs.ultimate-guitar.com/tab/rend-collective/rescuer-good-news-chords-2126297", tg: ["Lagerfeuer", "Kraftvoll"] }
+];
+
+/* Baut das Startpaket in ein frisches Datenobjekt. Ueberschreibt nie vorhandene Daten —
+   der Aufrufer entscheidet, ob geseedet wird. */
+function buildStartpaket() {
+  const data = defaultData();
+  const tagIdByName = {};
+  STARTPAKET_TAGS.forEach(t => {
+    const tag = { id: uuid(), name: t.n, farbe: t.f, gruppe: '' };
+    data.tags.push(tag);
+    tagIdByName[t.n] = tag.id;
+  });
+  STARTPAKET_SONGS.forEach(s => {
+    data.songs.push({
+      ...defaultSong(),
+      titel: s.t, interpret: s.i, sprache: s.sp, quelleUrl: s.u,
+      tagIds: s.tg.map(n => tagIdByName[n]).filter(Boolean)
+    });
+  });
+  const setlistDef = [
+    { name: 'Workshop', anlass: 'Worship-Workshop', tag: 'Workshop' },
+    { name: 'Lagerfeuer', anlass: 'Freizeit / Lagerfeuer', tag: 'Lagerfeuer' }
+  ];
+  setlistDef.forEach(def => {
+    const tid = tagIdByName[def.tag];
+    const eintraege = data.songs
+      .filter(s => s.tagIds.includes(tid))
+      .map(s => ({ songId: s.id, tonartAbweichend: null, notiz: '' }));
+    if (eintraege.length) {
+      data.setlists.push({ ...defaultSetlist(), name: def.name, anlass: def.anlass, eintraege });
+    }
+  });
+  return data;
+}
+
+let DATA = loadData();
+
+/* spec/01 §9 — beim allerersten Start (noch nichts im localStorage) das Startpaket laden */
+if (localStorage.getItem(LS_KEY) === null) {
+  DATA = buildStartpaket();
+  saveData(DATA);
+}
+
+/* Nachladen auf Knopfdruck, wenn die App leer ist */
+function ladeStartpaket() {
+  if (DATA.songs.length > 0 &&
+      !confirm('Startpaket laden? Vorhandene Songs bleiben erhalten, die 23 Workshop-Songs kommen dazu.')) return;
+  const paket = buildStartpaket();
+  const vorhandeneTags = new Map(DATA.tags.map(t => [t.name.toLowerCase(), t]));
+  const idMap = {};
+  paket.tags.forEach(t => {
+    const treffer = vorhandeneTags.get(t.name.toLowerCase());
+    if (treffer) { idMap[t.id] = treffer.id; }
+    else { DATA.tags.push(t); idMap[t.id] = t.id; }
+  });
+  paket.songs.forEach(s => {
+    if (DATA.songs.some(x => x.titel.toLowerCase() === s.titel.toLowerCase() &&
+                             x.interpret.toLowerCase() === s.interpret.toLowerCase())) return;
+    s.tagIds = s.tagIds.map(id => idMap[id] || id);
+    DATA.songs.push(s);
+  });
+  paket.setlists.forEach(sl => {
+    sl.eintraege = sl.eintraege.filter(e => DATA.songs.some(s => s.id === e.songId));
+    if (sl.eintraege.length && !DATA.setlists.some(x => x.name === sl.name)) DATA.setlists.push(sl);
+  });
+  commit();
+}
+
+/* ---------- Songs (spec/01 §7) ---------- */
+
+function createSong(overrides) {
+  const t = nowIso();
+  const song = { ...defaultSong(), ...overrides, id: uuid(), erstelltAm: t, geaendertAm: t };
+  DATA.songs.push(song);
+  commit();
+  return song;
+}
+
+function updateSong(id, changes) {
+  const song = DATA.songs.find(s => s.id === id);
+  if (!song) return;
+  Object.assign(song, changes, { geaendertAm: nowIso() });
+  commit();
+}
+
+/* spec/01 §5 */
+function toggleFavorit(id) {
+  const song = DATA.songs.find(s => s.id === id);
+  if (!song) return;
+  song.favorit = !song.favorit;
+  song.geaendertAm = nowIso();
+  commit();
+}
+
+function setBewertung(id, n) {
+  const song = DATA.songs.find(s => s.id === id);
+  if (!song) return;
+  song.bewertung = song.bewertung === n ? 0 : n;
+  song.geaendertAm = nowIso();
+  commit();
+}
+
+/* ---------- Papierkorb (spec/01 §9) ---------- */
+
+function softDelete(typ, obj) {
+  const arr = typ === 'song' ? DATA.songs : DATA.setlists;
+  const idx = arr.findIndex(x => x.id === obj.id);
+  if (idx === -1) return;
+  arr.splice(idx, 1);
+  DATA.papierkorb.push({ id: uuid(), typ, datensatz: obj, geloeschtAm: nowIso() });
+  commit();
+}
+
+function deleteSong(id) {
+  const song = DATA.songs.find(s => s.id === id);
+  if (!song) return;
+  if (!confirm('"' + (song.titel || '(ohne Titel)') + '" wirklich löschen? Landet im Papierkorb (30 Tage).')) return;
+  softDelete('song', song);
+}
+
+function restoreFromTrash(entryId) {
+  const idx = DATA.papierkorb.findIndex(e => e.id === entryId);
+  if (idx === -1) return;
+  const entry = DATA.papierkorb[idx];
+  DATA.papierkorb.splice(idx, 1);
+  if (entry.typ === 'song') DATA.songs.push(entry.datensatz);
+  else DATA.setlists.push(entry.datensatz);
+  commit();
+  renderTrash();
+}
+
+function purgeFromTrash(entryId) {
+  const entry = DATA.papierkorb.find(e => e.id === entryId);
+  if (!entry) return;
+  const label = entry.typ === 'song' ? entry.datensatz.titel : entry.datensatz.name;
+  if (!confirm('"' + (label || '(ohne Titel)') + '" endgültig löschen? Das lässt sich nicht rückgängig machen.')) return;
+  DATA.papierkorb = DATA.papierkorb.filter(e => e.id !== entryId);
+  /* spec/00 §3.7 — Kaskaden greifen erst beim endgültigen Löschen */
+  if (entry.typ === 'song') {
+    const songId = entry.datensatz.id;
+    DATA.setlists.forEach(sl => { sl.eintraege = sl.eintraege.filter(en => en.songId !== songId); });
+  } else if (entry.typ === 'setlist') {
+    const setlistId = entry.datensatz.id;
+    DATA.historie.forEach(h => { if (h.setlistId === setlistId) h.setlistId = null; });
+  }
+  commit();
+  renderTrash();
+  if (currentSetlistId) renderSetlistDetail();
+}
+
+/* spec/01 §9 — läuft einmal beim Start, keine weiteren Kaskaden nötig (liefen beim Soft-Delete) */
+function autoPurgeTrash() {
+  const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const before = DATA.papierkorb.length;
+  DATA.papierkorb = DATA.papierkorb.filter(e => new Date(e.geloeschtAm).getTime() >= cutoff);
+  if (DATA.papierkorb.length !== before) saveData(DATA);
+}
+
+/* ---------- Tags (spec/01 §8) ---------- */
+
+function randomTagColor() {
+  return TAG_PALETTE[Math.floor(Math.random() * TAG_PALETTE.length)];
+}
+
+function getOrCreateTag(name) {
+  const trimmed = (name || '').trim();
+  if (!trimmed) return null;
+  let tag = DATA.tags.find(t => t.name.toLowerCase() === trimmed.toLowerCase());
+  if (!tag) {
+    tag = { id: uuid(), name: trimmed, farbe: randomTagColor(), gruppe: '' };
+    DATA.tags.push(tag);
+    saveData(DATA);
+  }
+  return tag;
+}
+
+function updateTag(id, changes) {
+  const tag = DATA.tags.find(t => t.id === id);
+  if (!tag) return;
+  Object.assign(tag, changes);
+  commit();
+  renderTagsManager();
+}
+
+function deleteTag(id) {
+  const tag = DATA.tags.find(t => t.id === id);
+  if (!tag) return;
+  if (!confirm('Tag "' + tag.name + '" wirklich löschen? Wird bei allen Songs entfernt.')) return;
+  DATA.tags = DATA.tags.filter(t => t.id !== id);
+  DATA.songs.forEach(s => { s.tagIds = s.tagIds.filter(tid => tid !== id); });
+  if (activeTagFilter === id) activeTagFilter = null;
+  commit();
+  renderTagsManager();
+}
+
+/* ---------- Setlists (spec/02 §2) ---------- */
+
+function defaultSetlist() {
+  return { id: uuid(), name: '', anlass: '', datum: '', notiz: '', eintraege: [] };
+}
+
+function normalizeSetlistEntry(raw) {
+  return { songId: raw.songId, tonartAbweichend: raw.tonartAbweichend ?? null, notiz: raw.notiz || '' };
+}
+
+function normalizeSetlist(raw) {
+  return {
+    ...defaultSetlist(), ...raw,
+    eintraege: Array.isArray(raw.eintraege) ? raw.eintraege.map(normalizeSetlistEntry) : []
+  };
+}
+
+function createSetlist(overrides) {
+  const setlist = { ...defaultSetlist(), ...overrides, id: uuid() };
+  DATA.setlists.push(setlist);
+  commit();
+  return setlist;
+}
+
+function updateSetlist(id, changes) {
+  const setlist = DATA.setlists.find(s => s.id === id);
+  if (!setlist) return;
+  Object.assign(setlist, changes);
+  commit();
+}
+
+function deleteSetlist(id) {
+  const setlist = DATA.setlists.find(s => s.id === id);
+  if (!setlist) return;
+  if (!confirm('Setlist "' + (setlist.name || '(ohne Namen)') + '" wirklich löschen? Landet im Papierkorb (30 Tage).')) return;
+  softDelete('setlist', setlist);
+}
+
+/* spec/02 §3.2 */
+function addSongToSetlist(setlistId, songId) {
+  const setlist = DATA.setlists.find(s => s.id === setlistId);
+  if (!setlist) return;
+  setlist.eintraege.push({ songId, tonartAbweichend: null, notiz: '' });
+  commit();
+}
+
+/* spec/02 §3.6 */
+function removeSetlistEntry(setlistId, index) {
+  const setlist = DATA.setlists.find(s => s.id === setlistId);
+  if (!setlist) return;
+  setlist.eintraege.splice(index, 1);
+  commit();
+}
+
+/* spec/02 §3.3 */
+function reorderSetlistEntries(setlistId, fromIndex, toIndex) {
+  const setlist = DATA.setlists.find(s => s.id === setlistId);
+  if (!setlist || fromIndex === toIndex) return;
+  const [moved] = setlist.eintraege.splice(fromIndex, 1);
+  setlist.eintraege.splice(toIndex, 0, moved);
+  commit();
+}
+
+/* spec/02 §3.4 — tonartAbweichend bleibt null, solange der Eintrag der Song-Tonart entspricht */
+function setEntryTonart(setlistId, index, value) {
+  const setlist = DATA.setlists.find(s => s.id === setlistId);
+  if (!setlist) return;
+  const entry = setlist.eintraege[index];
+  if (!entry) return;
+  const song = DATA.songs.find(s => s.id === entry.songId);
+  const trimmed = (value || '').trim();
+  entry.tonartAbweichend = (trimmed && trimmed !== (song ? song.tonartWir : '')) ? trimmed : null;
+  commit();
+}
+
+function resetEntryTonart(setlistId, index) {
+  const setlist = DATA.setlists.find(s => s.id === setlistId);
+  if (!setlist) return;
+  const entry = setlist.eintraege[index];
+  if (!entry) return;
+  entry.tonartAbweichend = null;
+  commit();
+}
+
+/* spec/02 §3.5 */
+function setlistDauerLabel(setlist) {
+  if (setlist.eintraege.length === 0) return '';
+  const known = [];
+  let missing = 0;
+  setlist.eintraege.forEach(e => {
+    const song = DATA.songs.find(s => s.id === e.songId);
+    if (song && song.dauerSek !== null && song.dauerSek !== undefined) known.push(song.dauerSek);
+    else missing++;
+  });
+  if (known.length === 0) return 'Dauer unbekannt';
+  const totalMin = Math.round(known.reduce((a, b) => a + b, 0) / 60);
+  return '~' + totalMin + ' Min' + (missing > 0 ? ' (' + missing + ' ohne Dauer)' : '');
+}
+
+/* ---------- Suche / Filter / Sortierung (spec/01 §6) ---------- */
+
+let searchTerm = '';
+let activeTagFilter = null;
+/* seit spec/03 ohne Funktion: die Kachel-Vorschau ist durch den Bühnenmodus ersetzt */
+
+function getVisibleSongs() {
+  let list = DATA.songs;
+  const q = searchTerm.trim().toLowerCase();
+  if (q) {
+    list = list.filter(s =>
+      s.titel.toLowerCase().includes(q) ||
+      s.interpret.toLowerCase().includes(q) ||
+      (s.alternativTitel || []).some(t => t.toLowerCase().includes(q))
+    );
+  }
+  if (activeTagFilter) {
+    list = list.filter(s => s.tagIds.includes(activeTagFilter));
+  }
+  return [...list].sort((a, b) => a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' }));
+}
+
+/* spec/01 §5, geaendert in spec/03 §2:
+   Text vorhanden -> direkt Buehnenmodus. Kein Text, aber Link -> Link oeffnen. */
+function handleCardOpen(id) {
+  const song = DATA.songs.find(s => s.id === id);
+  if (!song) return;
+  if (song.body && song.body.trim()) { openStage([id], 0); return; }
+  if (isSafeUrl(song.quelleUrl)) {
+    window.open(song.quelleUrl.trim(), '_blank', 'noopener,noreferrer');
+  } else {
+    openSongDialog(id);
+  }
+}
+
+/* ---------- Render: Song-Liste (spec/01 §5) ---------- */
+
+function songCardHtml(song) {
+  const tagsHtml = song.tagIds
+    .map(tid => DATA.tags.find(t => t.id === tid))
+    .filter(Boolean)
+    .map(t => '<button type="button" class="chip" style="--chip-color:' + esc(t.farbe) + '" data-action="filterTag" data-tagid="' + esc(t.id) + '">' + esc(t.name) + '</button>')
+    .join('');
+
+  const stars = [1, 2, 3, 4, 5].map(n =>
+    '<button type="button" class="star ' + (n <= song.bewertung ? 'filled' : '') + '" data-action="star" data-id="' + esc(song.id) + '" data-n="' + n + '" aria-label="' + n + ' Sterne">' + (n <= song.bewertung ? '★' : '☆') + '</button>'
+  ).join('');
+
+  return '' +
+    '<article class="card" data-id="' + esc(song.id) + '">' +
+      '<button type="button" class="card-main" data-action="open" data-id="' + esc(song.id) + '">' +
+        '<div class="card-title">' + (esc(song.titel) || '(ohne Titel)') + '</div>' +
+        '<div class="card-sub">' + esc(song.interpret) + '</div>' +
+      '</button>' +
+      (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
+      '<div class="card-controls">' +
+        '<div class="stars">' + stars + '</div>' +
+        '<button type="button" class="fav ' + (song.favorit ? 'active' : '') + '" data-action="fav" data-id="' + esc(song.id) + '" aria-label="Favorit">' + (song.favorit ? '♥' : '♡') + '</button>' +
+        '<details class="menu">' +
+          '<summary aria-label="Mehr">⋮</summary>' +
+          '<div class="menu-items">' +
+            '<button type="button" data-action="stage" data-id="' + esc(song.id) + '">▶ Bühnenmodus</button>' +
+            '<button type="button" data-action="edit" data-id="' + esc(song.id) + '">Bearbeiten</button>' +
+            '<button type="button" data-action="addToSetlist" data-id="' + esc(song.id) + '">Zu Setlist hinzufügen</button>' +
+            '<button type="button" data-action="delete" data-id="' + esc(song.id) + '">Löschen</button>' +
+          '</div>' +
+        '</details>' +
+      '</div>' +
+    '</article>';
+}
+
+function renderList() {
+  const listEl = $('songList');
+  const emptyEl = $('emptyState');
+
+  if (DATA.songs.length === 0) {
+    listEl.innerHTML = '';
+    emptyEl.hidden = false;
+    return;
+  }
+  emptyEl.hidden = true;
+
+  const visible = getVisibleSongs();
+  if (visible.length === 0) {
+    listEl.innerHTML = '<p class="no-results">Keine Treffer.</p>';
+    return;
+  }
+  listEl.innerHTML = visible.map(songCardHtml).join('');
+}
+
+function renderTagFilterIndicator() {
+  const el = $('tagFilterIndicator');
+  if (!activeTagFilter) { el.hidden = true; return; }
+  const tag = DATA.tags.find(t => t.id === activeTagFilter);
+  if (!tag) { activeTagFilter = null; el.hidden = true; return; }
+  el.hidden = false;
+  el.querySelector('.tag-filter-name').textContent = tag.name;
+}
+
+function renderReminder() {
+  const el = $('reminderBanner');
+  if (DATA.songs.length === 0) { el.hidden = true; return; }
+  const days = DATA.meta.zuletztExport
+    ? (Date.now() - new Date(DATA.meta.zuletztExport).getTime()) / 86400000
+    : Infinity;
+  const due = days > 14 || (DATA.meta.aenderungenSeitExport || 0) > 20;
+  el.hidden = !due;
+}
+
+function render() {
+  $('appTitle').textContent = DATA.meta.titel || 'Song-App';
+  renderReminder();
+  renderTagFilterIndicator();
+  renderList();
+}
+
+/* ---------- Song-Formular (spec/01 §7) ---------- */
+
+let editingSongId = null;
+let formBewertung = 0;
+let formTagIds = new Set();
+
+function renderFormStars() {
+  const row = $('f_starsRow');
+  row.innerHTML = [1, 2, 3, 4, 5].map(n =>
+    '<button type="button" class="star ' + (n <= formBewertung ? 'filled' : '') + '" data-n="' + n + '">' + (n <= formBewertung ? '★' : '☆') + '</button>'
+  ).join('');
+}
+
+function renderTagCheckboxes() {
+  const box = $('f_tagCheckboxes');
+  if (DATA.tags.length === 0) {
+    box.innerHTML = '<p class="hint">Noch keine Tags.</p>';
+    return;
+  }
+  box.innerHTML = DATA.tags.map(t =>
+    '<label class="chip-checkbox" style="--chip-color:' + esc(t.farbe) + '">' +
+      '<input type="checkbox" value="' + esc(t.id) + '" style="width:auto" ' + (formTagIds.has(t.id) ? 'checked' : '') + '> ' +
+      esc(t.name) +
+    '</label>'
+  ).join('');
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) formTagIds.add(cb.value); else formTagIds.delete(cb.value);
+    });
+  });
+}
+
+function openSongDialog(id) {
+  const song = id ? DATA.songs.find(s => s.id === id) : null;
+  editingSongId = song ? song.id : null;
+
+  $('songDialogTitle').textContent = song ? 'Song bearbeiten' : 'Neuer Song';
+  $('songDeleteBtn').hidden = !song;
+  $('songFormError').hidden = true;
+
+  $('f_titel').value = song ? song.titel : '';
+  $('f_interpret').value = song ? song.interpret : '';
+  $('f_alternativTitel').value = song ? (song.alternativTitel || []).join(', ') : '';
+  $('f_sprache').value = song ? song.sprache : '';
+  $('f_body').value = song ? song.body : '';
+  $('f_quelleUrl').value = song ? song.quelleUrl : '';
+  $('f_quelleNotiz').value = song ? song.quelleNotiz : '';
+  $('f_medienUrl').value = song ? song.medienUrl : '';
+  $('f_tonartOriginal').value = song ? song.tonartOriginal : '';
+  $('f_tonartWir').value = song ? song.tonartWir : '';
+  $('f_kapo').value = song ? song.kapo : 0;
+  $('f_bpm').value = song && song.bpm !== null && song.bpm !== undefined ? song.bpm : '';
+  $('f_taktart').value = song ? song.taktart : '';
+  $('f_dauerSek').value = song && song.dauerSek !== null && song.dauerSek !== undefined ? song.dauerSek : '';
+  $('f_favorit').checked = !!(song && song.favorit);
+  $('f_notiz').value = song ? song.notiz : '';
+  $('f_ccli').value = song ? song.ccli : '';
+
+  formBewertung = song ? song.bewertung : 0;
+  formTagIds = new Set(song ? song.tagIds : []);
+  renderFormStars();
+  renderTagCheckboxes();
+
+  $('songDialog').showModal();
+}
+
+function readSongForm() {
+  return {
+    titel: $('f_titel').value.trim(),
+    interpret: $('f_interpret').value.trim(),
+    alternativTitel: $('f_alternativTitel').value.split(',').map(s => s.trim()).filter(Boolean),
+    sprache: $('f_sprache').value.trim(),
+    body: $('f_body').value,
+    quelleUrl: $('f_quelleUrl').value.trim(),
+    quelleNotiz: $('f_quelleNotiz').value.trim(),
+    medienUrl: $('f_medienUrl').value.trim(),
+    tonartOriginal: $('f_tonartOriginal').value.trim(),
+    tonartWir: $('f_tonartWir').value.trim(),
+    kapo: $('f_kapo').value === '' ? 0 : Number($('f_kapo').value),
+    bpm: $('f_bpm').value === '' ? null : Number($('f_bpm').value),
+    taktart: $('f_taktart').value.trim(),
+    dauerSek: $('f_dauerSek').value === '' ? null : Number($('f_dauerSek').value),
+    tagIds: Array.from(formTagIds),
+    bewertung: formBewertung,
+    favorit: $('f_favorit').checked,
+    notiz: $('f_notiz').value.trim(),
+    ccli: $('f_ccli').value.trim()
+  };
+}
+
+/* ---------- Papierkorb-Ansicht (spec/01 §9) ---------- */
+
+function openTrashDialog() {
+  renderTrash();
+  $('trashDialog').showModal();
+}
+
+function renderTrash() {
+  const el = $('trashList');
+  if (DATA.papierkorb.length === 0) {
+    el.innerHTML = '<p class="hint">Papierkorb ist leer.</p>';
+    return;
+  }
+  el.innerHTML = DATA.papierkorb.map(entry => {
+    const label = entry.typ === 'song' ? entry.datensatz.titel : entry.datensatz.name;
+    return '' +
+      '<div class="trash-row">' +
+        '<span>' + (esc(label) || '(ohne Titel)') + ' <small>(' + esc(entry.typ) + ', gelöscht ' + fmtDate(entry.geloeschtAm) + ')</small></span>' +
+        '<button type="button" data-action="restore" data-id="' + esc(entry.id) + '">Wiederherstellen</button>' +
+        '<button type="button" class="danger" data-action="purge" data-id="' + esc(entry.id) + '">Endgültig löschen</button>' +
+      '</div>';
+  }).join('');
+}
+
+/* ---------- Tag-Verwaltung (spec/01 §8) ---------- */
+
+function openTagsDialog() {
+  renderTagsManager();
+  $('tagsDialog').showModal();
+}
+
+function renderTagsManager() {
+  const el = $('tagsManagerList');
+  if (DATA.tags.length === 0) {
+    el.innerHTML = '<p class="hint">Noch keine Tags.</p>';
+    return;
+  }
+  el.innerHTML = DATA.tags.map(t => '' +
+    '<div class="tag-manage-row" data-id="' + esc(t.id) + '">' +
+      '<input type="color" value="' + esc(t.farbe) + '" data-field="farbe">' +
+      '<input type="text" value="' + esc(t.name) + '" data-field="name" maxlength="40">' +
+      '<input type="text" value="' + esc(t.gruppe) + '" data-field="gruppe" placeholder="Gruppe" maxlength="40">' +
+      '<button type="button" class="danger" data-action="deleteTag">Löschen</button>' +
+    '</div>'
+  ).join('');
+}
+
+/* ---------- Setlist-Ansicht (spec/02) ---------- */
+
+let currentSetlistId = null;
+let editingSetlistId = null;
+let setlistSongPickerTerm = '';
+let addToSetlistSongId = null;
+let pendingSongForNewSetlist = null;
+let dragCtx = null;
+
+function openSetlistsDialog() {
+  renderSetlistsList();
+  $('setlistsDialog').showModal();
+}
+
+function renderSetlistsList() {
+  const el = $('setlistsList');
+  if (DATA.setlists.length === 0) {
+    el.innerHTML = '<p class="hint">Noch keine Setlists.</p>';
+    return;
+  }
+  const sorted = [...DATA.setlists].sort((a, b) => (b.datum || '').localeCompare(a.datum || ''));
+  el.innerHTML = sorted.map(sl => '' +
+    '<div class="trash-row">' +
+      '<button type="button" class="setlist-row-main" data-action="open" data-id="' + esc(sl.id) + '">' +
+        '<strong>' + (esc(sl.name) || '(ohne Namen)') + '</strong>' +
+        '<div class="card-sub">' + [esc(sl.anlass), sl.datum ? fmtDate(sl.datum) : '', sl.eintraege.length + ' Song' + (sl.eintraege.length === 1 ? '' : 's'), setlistDauerLabel(sl)].filter(Boolean).join(' · ') + '</div>' +
+      '</button>' +
+      '<details class="menu">' +
+        '<summary aria-label="Mehr">⋮</summary>' +
+        '<div class="menu-items">' +
+          '<button type="button" data-action="edit" data-id="' + esc(sl.id) + '">Bearbeiten</button>' +
+          '<button type="button" data-action="delete" data-id="' + esc(sl.id) + '">Löschen</button>' +
+        '</div>' +
+      '</details>' +
+    '</div>'
+  ).join('');
+}
+
+function closeSetlistMenus() {
+  document.querySelectorAll('#setlistsList details.menu[open]').forEach(d => d.removeAttribute('open'));
+}
+
+/* spec/02 §3.1 */
+function openSetlistFormDialog(id) {
+  const setlist = id ? DATA.setlists.find(s => s.id === id) : null;
+  editingSetlistId = setlist ? setlist.id : null;
+  $('setlistFormTitle').textContent = setlist ? 'Setlist bearbeiten' : 'Neue Setlist';
+  $('setlistDeleteBtn').hidden = !setlist;
+  $('setlistFormError').hidden = true;
+  $('sf_name').value = setlist ? setlist.name : '';
+  $('sf_anlass').value = setlist ? setlist.anlass : '';
+  $('sf_datum').value = setlist ? setlist.datum : '';
+  $('sf_notiz').value = setlist ? setlist.notiz : '';
+  $('setlistFormDialog').showModal();
+}
+
+function openSetlistDetailDialog(id) {
+  currentSetlistId = id;
+  renderSetlistDetail();
+  $('setlistDetailDialog').showModal();
+}
+
+function renderSetlistDetail() {
+  const setlist = DATA.setlists.find(s => s.id === currentSetlistId);
+  if (!setlist) {
+    if ($('setlistDetailDialog').open) $('setlistDetailDialog').close();
+    currentSetlistId = null;
+    return;
+  }
+  $('sd_name').textContent = setlist.name || '(ohne Namen)';
+  $('sd_meta').textContent = [setlist.anlass, setlist.datum ? fmtDate(setlist.datum) : ''].filter(Boolean).join(' · ');
+  const dauer = setlistDauerLabel(setlist);
+  $('sd_dauer').textContent = dauer ? 'Gesamtdauer: ' + dauer : '';
+  $('sd_dauer').hidden = !dauer;
+  renderSetlistEntries(setlist);
+  renderSongPicker();
+}
+
+function renderSetlistEntries(setlist) {
+  const el = $('setlistEntries');
+  if (setlist.eintraege.length === 0) {
+    el.innerHTML = '<p class="hint">Noch keine Songs in dieser Setlist.</p>';
+    return;
+  }
+  el.innerHTML = setlist.eintraege.map((entry, i) => {
+    const song = DATA.songs.find(s => s.id === entry.songId);
+    const titel = song ? (song.titel || '(ohne Titel)') : '(Song im Papierkorb)';
+    const sub = song ? esc(song.interpret) : '';
+    const tonart = entry.tonartAbweichend || (song ? song.tonartWir : '') || '';
+    const abweichend = !!entry.tonartAbweichend;
+    return '' +
+      '<div class="setlist-entry" data-index="' + i + '">' +
+        '<span class="drag-handle" data-drag-handle aria-label="Verschieben">☰</span>' +
+        '<button type="button" class="setlist-row-main entry-main" data-action="playEntry" data-index="' + i + '">' +
+          '<div class="entry-title">' + esc(titel) + '</div>' +
+          (sub ? '<div class="entry-sub">' + sub + '</div>' : '') +
+        '</button>' +
+        '<div class="entry-key">' +
+          '<input type="text" maxlength="10" value="' + esc(tonart) + '" data-action="tonart" data-index="' + i + '"' + (song ? '' : ' disabled') + '>' +
+          (abweichend ? '<button type="button" class="key-badge" data-action="resetTonart" data-index="' + i + '" title="Zurücksetzen auf normale Tonart">↺</button>' : '') +
+        '</div>' +
+        '<button type="button" class="danger" data-action="removeEntry" data-index="' + i + '" aria-label="Entfernen">✕</button>' +
+      '</div>';
+  }).join('');
+}
+
+function renderSongPicker() {
+  const el = $('setlistSongPickerResults');
+  const q = setlistSongPickerTerm.trim().toLowerCase();
+  let matches = DATA.songs;
+  if (q) {
+    matches = matches.filter(s => s.titel.toLowerCase().includes(q) || s.interpret.toLowerCase().includes(q));
+  }
+  matches = [...matches].sort((a, b) => a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' })).slice(0, 20);
+  if (matches.length === 0) {
+    el.innerHTML = '<p class="hint">Keine Treffer.</p>';
+    return;
+  }
+  el.innerHTML = matches.map(s => '' +
+    '<div class="song-picker-row">' +
+      '<span>' + (esc(s.titel) || '(ohne Titel)') + (s.interpret ? ' <small>· ' + esc(s.interpret) + '</small>' : '') + '</span>' +
+      '<button type="button" data-action="addSong" data-songid="' + esc(s.id) + '">+</button>' +
+    '</div>'
+  ).join('');
+}
+
+/* spec/02 §3.2 — Einstieg von der Songliste aus */
+function openAddToSetlistDialog(songId) {
+  addToSetlistSongId = songId;
+  const song = DATA.songs.find(s => s.id === songId);
+  $('ats_songTitle').textContent = song ? (song.titel || '(ohne Titel)') : '';
+  renderAddToSetlistList();
+  $('addToSetlistDialog').showModal();
+}
+
+function renderAddToSetlistList() {
+  const el = $('ats_list');
+  if (DATA.setlists.length === 0) {
+    el.innerHTML = '<p class="hint">Noch keine Setlists. Lege zuerst eine neue an.</p>';
+    return;
+  }
+  const sorted = [...DATA.setlists].sort((a, b) => a.name.localeCompare(b.name, 'de', { sensitivity: 'base' }));
+  el.innerHTML = sorted.map(sl => '' +
+    '<div class="song-picker-row">' +
+      '<span>' + (esc(sl.name) || '(ohne Namen)') + ' <small>(' + sl.eintraege.length + ')</small></span>' +
+      '<button type="button" data-action="addToSetlist" data-id="' + esc(sl.id) + '">+ Hinzufügen</button>' +
+    '</div>'
+  ).join('');
+}
+
+/* ---------- Export / Import (spec/01 §10, §11) ---------- */
+
+function doExport() {
+  const payload = { app: 'song-app', schemaVersion: DATA.schemaVersion, exportiertAm: nowIso(), daten: DATA };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'song-app-export-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  DATA.meta.zuletztExport = nowIso();
+  DATA.meta.aenderungenSeitExport = 0;
+  saveData(DATA);
+  render();
+}
+
+let pendingImport = null;
+
+function handleImportFileSelected(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try { parsed = JSON.parse(reader.result); }
+    catch (err) { alert('Datei ist kein gültiges JSON.'); return; }
+    if (!parsed || parsed.app !== 'song-app' || !parsed.daten) {
+      alert('Das ist keine gültige Song-App-Exportdatei.');
+      return;
+    }
+    pendingImport = normalizeData(parsed.daten);
+    showImportPreview(pendingImport);
+  };
+  reader.readAsText(file);
+}
+
+function showImportPreview(data) {
+  $('importPreview').textContent =
+    data.songs.length + ' Songs · ' + data.setlists.length + ' Setlists · ' +
+    data.tags.length + ' Tags · ' + data.historie.length + ' Historien-Einträge';
+  $('importDialog').showModal();
+}
+
+/* ============================================================
+   Event-Handler
+   ============================================================ */
+
+$('songList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const action = btn.dataset.action;
+  const id = btn.dataset.id;
+  if (action === 'open') handleCardOpen(id);
+  else if (action === 'star') setBewertung(id, Number(btn.dataset.n));
+  else if (action === 'fav') toggleFavorit(id);
+  else if (action === 'stage') { closeCardMenus(); openStage([id], 0); }
+  else if (action === 'edit') { closeCardMenus(); openSongDialog(id); }
+  else if (action === 'addToSetlist') { closeCardMenus(); openAddToSetlistDialog(id); }
+  else if (action === 'delete') { closeCardMenus(); deleteSong(id); }
+  else if (action === 'filterTag') {
+    const tagId = btn.dataset.tagid;
+    activeTagFilter = (activeTagFilter === tagId) ? null : tagId;
+    render();
+  }
+});
+
+function closeCardMenus() {
+  document.querySelectorAll('#songList details.menu[open]').forEach(d => d.removeAttribute('open'));
+}
+
+$('btnNewSong').addEventListener('click', () => openSongDialog(null));
+$('emptyNewSongBtn').addEventListener('click', () => openSongDialog(null));
+$('emptyImportBtn').addEventListener('click', () => $('importFileInput').click());
+$('emptyStartpaketBtn').addEventListener('click', ladeStartpaket);   /* spec/01 §9 */
+
+$('searchInput').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
+$('clearTagFilter').addEventListener('click', () => { activeTagFilter = null; render(); });
+
+$('btnExport').addEventListener('click', doExport);
+$('reminderExportBtn').addEventListener('click', doExport);
+$('btnImport').addEventListener('click', () => $('importFileInput').click());
+$('importFileInput').addEventListener('change', handleImportFileSelected);
+
+$('btnTrash').addEventListener('click', openTrashDialog);
+$('btnTags').addEventListener('click', openTagsDialog);
+
+/* Song-Formular */
+$('f_starsRow').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-n]');
+  if (!btn) return;
+  const n = Number(btn.dataset.n);
+  formBewertung = (formBewertung === n) ? 0 : n;
+  renderFormStars();
+});
+
+$('f_addTagBtn').addEventListener('click', () => {
+  const input = $('f_newTag');
+  const tag = getOrCreateTag(input.value);
+  if (tag) { formTagIds.add(tag.id); input.value = ''; renderTagCheckboxes(); }
+});
+
+$('songForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const values = readSongForm();
+  if (!values.titel) {
+    const err = $('songFormError');
+    err.textContent = 'Titel darf nicht leer sein.';
+    err.hidden = false;
+    return;
+  }
+  if (editingSongId) updateSong(editingSongId, values);
+  else createSong(values);
+  $('songDialog').close();
+});
+
+$('songCancelBtn').addEventListener('click', () => $('songDialog').close());
+$('songDeleteBtn').addEventListener('click', () => {
+  if (editingSongId) {
+    deleteSong(editingSongId);
+    $('songDialog').close();
+  }
+});
+
+/* Papierkorb */
+$('trashList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  if (btn.dataset.action === 'restore') restoreFromTrash(btn.dataset.id);
+  else if (btn.dataset.action === 'purge') purgeFromTrash(btn.dataset.id);
+});
+$('trashCloseBtn').addEventListener('click', () => $('trashDialog').close());
+
+/* Tags */
+$('tagsManagerList').addEventListener('change', (e) => {
+  const row = e.target.closest('.tag-manage-row');
+  const field = e.target.dataset.field;
+  if (!row || !field) return;
+  updateTag(row.dataset.id, { [field]: e.target.value });
+});
+$('tagsManagerList').addEventListener('click', (e) => {
+  if (e.target.dataset.action === 'deleteTag') {
+    const row = e.target.closest('.tag-manage-row');
+    if (row) deleteTag(row.dataset.id);
+  }
+});
+$('tagsCloseBtn').addEventListener('click', () => $('tagsDialog').close());
+
+/* Setlists (spec/02) */
+$('btnSetlists').addEventListener('click', openSetlistsDialog);
+$('setlistsCloseBtn').addEventListener('click', () => $('setlistsDialog').close());
+$('btnNewSetlist').addEventListener('click', () => openSetlistFormDialog(null));
+
+$('setlistsList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const id = btn.dataset.id;
+  const action = btn.dataset.action;
+  if (action === 'open') openSetlistDetailDialog(id);
+  else if (action === 'edit') { closeSetlistMenus(); openSetlistFormDialog(id); }
+  else if (action === 'delete') { closeSetlistMenus(); deleteSetlist(id); renderSetlistsList(); }
+});
+
+$('setlistForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const values = {
+    name: $('sf_name').value.trim(),
+    anlass: $('sf_anlass').value.trim(),
+    datum: $('sf_datum').value,
+    notiz: $('sf_notiz').value.trim()
+  };
+  if (!values.name) {
+    const err = $('setlistFormError');
+    err.textContent = 'Name darf nicht leer sein.';
+    err.hidden = false;
+    return;
+  }
+  const wasNew = !editingSetlistId;
+  let targetId = editingSetlistId;
+  if (editingSetlistId) {
+    updateSetlist(editingSetlistId, values);
+  } else {
+    const created = createSetlist(values);
+    targetId = created.id;
+  }
+  $('setlistFormDialog').close();
+  renderSetlistsList();
+  if (wasNew) {
+    if (pendingSongForNewSetlist) {
+      addSongToSetlist(targetId, pendingSongForNewSetlist);
+      pendingSongForNewSetlist = null;
+    }
+    openSetlistDetailDialog(targetId);
+  } else if (currentSetlistId === targetId) {
+    renderSetlistDetail();
+  }
+});
+
+$('setlistCancelBtn').addEventListener('click', () => {
+  pendingSongForNewSetlist = null;
+  $('setlistFormDialog').close();
+});
+$('setlistDeleteBtn').addEventListener('click', () => {
+  if (editingSetlistId) {
+    const id = editingSetlistId;
+    deleteSetlist(id);
+    $('setlistFormDialog').close();
+    if (currentSetlistId === id && $('setlistDetailDialog').open) {
+      $('setlistDetailDialog').close();
+      currentSetlistId = null;
+    }
+    renderSetlistsList();
+  }
+});
+
+$('sd_editBtn').addEventListener('click', () => { if (currentSetlistId) openSetlistFormDialog(currentSetlistId); });
+$('setlistDetailCloseBtn').addEventListener('click', () => { $('setlistDetailDialog').close(); currentSetlistId = null; });
+
+$('setlistSongPickerInput').addEventListener('input', (e) => { setlistSongPickerTerm = e.target.value; renderSongPicker(); });
+$('setlistSongPickerResults').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="addSong"]');
+  if (!btn || !currentSetlistId) return;
+  addSongToSetlist(currentSetlistId, btn.dataset.songid);
+  renderSetlistDetail();
+});
+
+$('setlistEntries').addEventListener('click', (e) => {
+  if (!currentSetlistId) return;
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  const index = Number(btn.dataset.index);
+  if (btn.dataset.action === 'removeEntry') {
+    removeSetlistEntry(currentSetlistId, index);
+    renderSetlistDetail();
+  } else if (btn.dataset.action === 'resetTonart') {
+    resetEntryTonart(currentSetlistId, index);
+    renderSetlistDetail();
+  } else if (btn.dataset.action === 'playEntry') {
+    /* spec/03 §2 */
+    startSetlistStage(currentSetlistId, index);
+  }
+});
+
+/* spec/03 §2 */
+$('sd_startBtn').addEventListener('click', () => {
+  if (currentSetlistId) startSetlistStage(currentSetlistId, 0);
+});
+$('setlistEntries').addEventListener('change', (e) => {
+  if (!currentSetlistId) return;
+  if (e.target.dataset.action === 'tonart') {
+    setEntryTonart(currentSetlistId, Number(e.target.dataset.index), e.target.value);
+    renderSetlistDetail();
+  }
+});
+
+/* spec/02 §3.3 — Reihenfolge per Drag & Drop (Pointer Events, touch- und maustauglich) */
+$('setlistEntries').addEventListener('pointerdown', (e) => {
+  const handle = e.target.closest('[data-drag-handle]');
+  if (!handle) return;
+  const row = handle.closest('.setlist-entry');
+  const list = $('setlistEntries');
+  const siblingRects = Array.from(list.children).map(r => {
+    const rect = r.getBoundingClientRect();
+    return { index: Number(r.dataset.index), mid: rect.top + rect.height / 2 };
+  });
+  dragCtx = { row, fromIndex: Number(row.dataset.index), startY: e.clientY, pointerId: e.pointerId, siblingRects };
+  row.classList.add('dragging');
+  row.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+$('setlistEntries').addEventListener('pointermove', (e) => {
+  if (!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+  dragCtx.row.style.transform = 'translateY(' + (e.clientY - dragCtx.startY) + 'px)';
+});
+function endSetlistDrag(e) {
+  if (!dragCtx || e.pointerId !== dragCtx.pointerId) return;
+  const { row, fromIndex, siblingRects } = dragCtx;
+  row.style.transform = '';
+  row.classList.remove('dragging');
+  try { row.releasePointerCapture(e.pointerId); } catch (err) {}
+  const others = siblingRects.filter(s => s.index !== fromIndex);
+  const toIndex = others.filter(s => s.mid < e.clientY).length;
+  dragCtx = null;
+  if (currentSetlistId && toIndex !== fromIndex) {
+    reorderSetlistEntries(currentSetlistId, fromIndex, toIndex);
+  }
+  renderSetlistDetail();
+}
+$('setlistEntries').addEventListener('pointerup', endSetlistDrag);
+$('setlistEntries').addEventListener('pointercancel', endSetlistDrag);
+
+/* Zu Setlist hinzufügen (spec/02 §3.2) */
+$('ats_list').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="addToSetlist"]');
+  if (!btn || !addToSetlistSongId) return;
+  addSongToSetlist(btn.dataset.id, addToSetlistSongId);
+  $('addToSetlistDialog').close();
+});
+$('ats_newBtn').addEventListener('click', () => {
+  $('addToSetlistDialog').close();
+  pendingSongForNewSetlist = addToSetlistSongId;
+  openSetlistFormDialog(null);
+});
+$('ats_closeBtn').addEventListener('click', () => $('addToSetlistDialog').close());
+
+/* Import */
+$('importCancelBtn').addEventListener('click', () => {
+  pendingImport = null;
+  $('importDialog').close();
+});
+$('importConfirmBtn').addEventListener('click', () => {
+  if (!pendingImport) return;
+  if (!confirm('Letzte Bestätigung: Wirklich ALLE aktuellen Daten überschreiben?')) return;
+  DATA = pendingImport;
+  pendingImport = null;
+  saveData(DATA);
+  $('importDialog').close();
+  render();
+});
+
+/* ============================================================
+   spec/03 — Bühnenmodus
+   ============================================================ */
+
+const STAGE = {
+  ids: [],            // Song-IDs in Reihenfolge
+  keys: [],           // Tonart je Position (aus der Setlist), gleiche Laenge wie ids
+  index: 0,
+  fromSetlist: false,
+  running: false,     // Auto-Scroll laeuft
+  rafId: null,
+  lastTs: 0,
+  restPx: 0,          // Sub-Pixel-Rest, damit kleine Tempi nicht ruckeln
+  wakeLock: null,
+  barsTimer: null,
+  touch: null
+};
+
+function stageSong() { return DATA.songs.find(s => s.id === STAGE.ids[STAGE.index]) || null; }
+
+function clampFontSize(v) { return Math.min(3.0, Math.max(0.8, Math.round(v * 10) / 10)); }
+
+/* spec/03 §2 — Einstieg aus einer Setlist, mit Kontext fuer Vor/Zurueck */
+function startSetlistStage(setlistId, index) {
+  const setlist = DATA.setlists.find(s => s.id === setlistId);
+  if (!setlist) return;
+  const ids = [], keys = [];
+  setlist.eintraege.forEach(entry => {
+    const song = DATA.songs.find(s => s.id === entry.songId);
+    if (!song) return;                    // Songs im Papierkorb ueberspringen
+    ids.push(song.id);
+    keys.push(entry.tonartAbweichend || song.tonartWir || '');
+  });
+  if (ids.length === 0) { alert('Diese Setlist enthält keine spielbaren Songs.'); return; }
+  // Index auf die bereinigte Liste umrechnen
+  const wantedId = setlist.eintraege[index] ? setlist.eintraege[index].songId : null;
+  const start = Math.max(0, ids.indexOf(wantedId));
+  openStage(ids, start, true, keys);
+}
+
+function openStage(ids, index, fromSetlist, keys) {
+  STAGE.ids = ids;
+  STAGE.keys = keys || [];
+  STAGE.index = index || 0;
+  STAGE.fromSetlist = !!fromSetlist;
+  STAGE.running = false;
+  $('stage').hidden = false;
+  document.body.style.overflow = 'hidden';
+  renderStage();
+  requestStageWakeLock();
+  showStageBars();
+}
+
+function closeStage() {
+  stopStageScroll();
+  releaseStageWakeLock();
+  $('stage').hidden = true;
+  document.body.style.overflow = '';
+  if (STAGE.barsTimer) { clearTimeout(STAGE.barsTimer); STAGE.barsTimer = null; }
+}
+
+function stageIsOpen() { return !$('stage').hidden; }
+
+function renderStage() {
+  const song = stageSong();
+  if (!song) { closeStage(); return; }
+
+  const tonart = (STAGE.fromSetlist ? STAGE.keys[STAGE.index] : '') || song.tonartWir || song.tonartOriginal || '';
+  $('stageTitle').textContent = song.titel || '(ohne Titel)';
+  $('stageSub').textContent = [song.interpret, tonart ? 'Tonart ' + tonart : ''].filter(Boolean).join(' · ');
+  $('stagePos').textContent = STAGE.fromSetlist ? (STAGE.index + 1) + ' / ' + STAGE.ids.length : '';
+  $('stagePrevBtn').hidden = !STAGE.fromSetlist;
+  $('stageNextBtn').hidden = !STAGE.fromSetlist;
+  $('stagePrevBtn').disabled = STAGE.index === 0;
+  $('stageNextBtn').disabled = STAGE.index >= STAGE.ids.length - 1;
+
+  const body = $('stageBody');
+  if (song.body && song.body.trim()) {
+    body.textContent = song.body;
+  } else {
+    body.innerHTML = '<div id="stageEmpty">Für diesen Song ist kein Text hinterlegt.' +
+      (isSafeUrl(song.quelleUrl)
+        ? ' <button type="button" id="stageLinkBtn">Chords-Link öffnen</button>'
+        : '') + '</div>';
+  }
+  body.style.fontSize = (DATA.meta.schriftgroesse || 1) + 'rem';
+  body.scrollTop = 0;
+  body.scrollLeft = 0;
+
+  const tempo = Number(song.autoscrollTempo) || 0;
+  $('stageTempo').value = tempo;
+  updateStageTempoLabel(tempo);
+  updateStagePlayBtn();
+}
+
+function updateStageTempoLabel(tempo) {
+  $('stageTempoLabel').textContent = tempo > 0 ? tempo + ' px/s' : 'aus';
+}
+
+function updateStagePlayBtn() {
+  const btn = $('stagePlayBtn');
+  btn.textContent = STAGE.running ? '⏸' : '▶';
+  btn.classList.toggle('on', STAGE.running);
+  btn.setAttribute('aria-label', STAGE.running ? 'Auto-Scroll pausieren' : 'Auto-Scroll starten');
+}
+
+/* spec/03 §4 — Auto-Scroll mit Sub-Pixel-Akkumulator */
+function stageScrollTick(ts) {
+  if (!STAGE.running) return;
+  const song = stageSong();
+  const tempo = song ? (Number(song.autoscrollTempo) || 0) : 0;
+  if (tempo <= 0) { stopStageScroll(); return; }
+
+  if (!STAGE.lastTs) STAGE.lastTs = ts;
+  const dt = Math.min(0.25, (ts - STAGE.lastTs) / 1000); // Sprünge nach Tab-Wechsel kappen
+  STAGE.lastTs = ts;
+
+  const body = $('stageBody');
+  STAGE.restPx += tempo * dt;
+  const whole = Math.floor(STAGE.restPx);
+  if (whole > 0) {
+    STAGE.restPx -= whole;
+    const before = body.scrollTop;
+    body.scrollTop = before + whole;
+    if (body.scrollTop === before && before + body.clientHeight >= body.scrollHeight - 1) {
+      stopStageScroll();   // Ende erreicht
+      return;
+    }
+  }
+  STAGE.rafId = requestAnimationFrame(stageScrollTick);
+}
+
+function startStageScroll() {
+  const song = stageSong();
+  if (!song || !(Number(song.autoscrollTempo) > 0)) return;
+  STAGE.running = true;
+  STAGE.lastTs = 0;
+  STAGE.restPx = 0;
+  updateStagePlayBtn();
+  STAGE.rafId = requestAnimationFrame(stageScrollTick);
+}
+
+function stopStageScroll() {
+  STAGE.running = false;
+  if (STAGE.rafId) { cancelAnimationFrame(STAGE.rafId); STAGE.rafId = null; }
+  updateStagePlayBtn();
+}
+
+function stageGoto(delta) {
+  const next = STAGE.index + delta;
+  if (next < 0 || next >= STAGE.ids.length) return;
+  const wasRunning = STAGE.running;
+  stopStageScroll();
+  STAGE.index = next;
+  renderStage();
+  const song = stageSong();
+  if (wasRunning && song && Number(song.autoscrollTempo) > 0) startStageScroll();
+  showStageBars();
+}
+
+/* spec/03 §3 — Leisten blenden nach 4 s aus */
+function showStageBars() {
+  const el = $('stage');
+  el.classList.remove('bars-hidden');
+  if (STAGE.barsTimer) clearTimeout(STAGE.barsTimer);
+  STAGE.barsTimer = setTimeout(() => {
+    if (stageIsOpen()) el.classList.add('bars-hidden');
+  }, 4000);
+}
+
+/* spec/03 §6 — Wake Lock */
+function stageHint(text) {
+  const el = $('stageHint');
+  el.textContent = text;
+  el.hidden = !text;
+}
+
+async function requestStageWakeLock() {
+  if (!('wakeLock' in navigator)) {
+    stageHint('Bildschirm bleibt evtl. nicht an — Display-Timeout in den Systemeinstellungen erhöhen.');
+    return;
+  }
+  try {
+    STAGE.wakeLock = await navigator.wakeLock.request('screen');
+    stageHint('');
+    STAGE.wakeLock.addEventListener('release', () => { STAGE.wakeLock = null; });
+  } catch (e) {
+    STAGE.wakeLock = null;
+    stageHint('Bildschirm bleibt evtl. nicht an — Display-Timeout in den Systemeinstellungen erhöhen.');
+  }
+}
+
+function releaseStageWakeLock() {
+  if (STAGE.wakeLock) { try { STAGE.wakeLock.release(); } catch (e) {} STAGE.wakeLock = null; }
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && stageIsOpen() && !STAGE.wakeLock) requestStageWakeLock();
+});
+
+/* Bedienung */
+$('stageCloseBtn').addEventListener('click', closeStage);
+$('stagePrevBtn').addEventListener('click', () => stageGoto(-1));
+$('stageNextBtn').addEventListener('click', () => stageGoto(1));
+$('stagePlayBtn').addEventListener('click', () => {
+  if (STAGE.running) stopStageScroll(); else startStageScroll();
+  showStageBars();
+});
+
+let stageTempoTimer = null;
+$('stageTempo').addEventListener('input', (e) => {
+  const song = stageSong();
+  if (!song) return;
+  const tempo = Number(e.target.value) || 0;
+  updateStageTempoLabel(tempo);
+  song.autoscrollTempo = tempo > 0 ? tempo : null;   // sofort wirksam fuer den laufenden Scroll
+  if (tempo === 0) stopStageScroll();
+  // spec/03 §4 — persistieren, aber entprellt: sonst rendert jeder Regler-Schritt die Liste neu
+  if (stageTempoTimer) clearTimeout(stageTempoTimer);
+  stageTempoTimer = setTimeout(() => {
+    updateSong(song.id, { autoscrollTempo: song.autoscrollTempo });
+  }, 400);
+  showStageBars();
+});
+
+function changeStageFont(delta) {
+  DATA.meta.schriftgroesse = clampFontSize((DATA.meta.schriftgroesse || 1) + delta);
+  $('stageBody').style.fontSize = DATA.meta.schriftgroesse + 'rem';
+  saveData(DATA);
+  showStageBars();
+}
+$('stageFontMinus').addEventListener('click', () => changeStageFont(-0.1));
+$('stageFontPlus').addEventListener('click', () => changeStageFont(0.1));
+
+$('stageBody').addEventListener('click', (e) => {
+  if (e.target.id === 'stageLinkBtn') {
+    const song = stageSong();
+    if (song && isSafeUrl(song.quelleUrl)) window.open(song.quelleUrl.trim(), '_blank', 'noopener,noreferrer');
+    return;
+  }
+  showStageBars();
+});
+
+document.addEventListener('keydown', (e) => {
+  if (!stageIsOpen()) return;
+  if (e.key === 'Escape') { closeStage(); }
+  else if (e.key === 'ArrowRight' && STAGE.fromSetlist) { stageGoto(1); }
+  else if (e.key === 'ArrowLeft' && STAGE.fromSetlist) { stageGoto(-1); }
+  else if (e.key === ' ') { e.preventDefault(); STAGE.running ? stopStageScroll() : startStageScroll(); }
+});
+
+/* spec/03 §5 — Wischgesten, nur mit Setlist-Kontext und nur an der Scroll-Kante */
+$('stageBody').addEventListener('touchstart', (e) => {
+  showStageBars();
+  if (e.touches.length !== 1) { STAGE.touch = null; return; }
+  const b = $('stageBody');
+  STAGE.touch = {
+    x: e.touches[0].clientX,
+    y: e.touches[0].clientY,
+    atLeft: b.scrollLeft <= 0,
+    atRight: b.scrollLeft + b.clientWidth >= b.scrollWidth - 1
+  };
+}, { passive: true });
+
+$('stageBody').addEventListener('touchend', (e) => {
+  const t = STAGE.touch;
+  STAGE.touch = null;
+  if (!t || !STAGE.fromSetlist || !e.changedTouches[0]) return;
+  const dx = e.changedTouches[0].clientX - t.x;
+  const dy = e.changedTouches[0].clientY - t.y;
+  if (Math.abs(dx) < 60 || Math.abs(dx) <= Math.abs(dy)) return;
+  if (dx < 0 && t.atRight) stageGoto(1);        // nach links wischen = weiter
+  else if (dx > 0 && t.atLeft) stageGoto(-1);   // nach rechts wischen = zurueck
+}, { passive: true });
+
+/* spec/03 §1b — Kachel-Menue nach oben klappen, wenn unten kein Platz ist.
+   'toggle' bubbelt nicht, deshalb in der Capture-Phase lauschen. */
+document.addEventListener('toggle', (e) => {
+  const details = e.target;
+  if (!(details instanceof HTMLElement) || !details.matches('details.menu')) return;
+  const items = details.querySelector('.menu-items');
+  if (!items) return;
+  if (!details.open) { items.classList.remove('menu-up'); return; }
+  items.classList.remove('menu-up');
+  const rect = items.getBoundingClientRect();
+  const summaryRect = details.querySelector('summary').getBoundingClientRect();
+  const platzUnten = window.innerHeight - summaryRect.bottom;
+  if (rect.height > platzUnten - 8 && summaryRect.top > rect.height + 8) {
+    items.classList.add('menu-up');
+  }
+}, true);
+
+/* Backdrop-Klick schließt alle Dialoge */
+document.querySelectorAll('dialog').forEach(dialog => {
+  dialog.addEventListener('click', (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+});
+
+/* ============================================================
+   Init
+   ============================================================ */
+autoPurgeTrash();
+render();
+</script>
+</body>
+</html>
