@@ -153,6 +153,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 .tag-manage-row input[type=color] { width: 44px; padding: 0; flex: 0 0 auto; }
 
 .warning { color: var(--danger); font-size: .9rem; }
+.body-tools { margin: -.4rem 0 .7rem; }
 
 /* ---------- spec/03 — Buehnenmodus ---------- */
 #stage[hidden] { display: none; }
@@ -169,6 +170,8 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   padding: calc(env(safe-area-inset-top) + .35rem) .5rem 45vh .5rem;
   -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
 }
+/* spec/04 §3 — Akkordzeilen im Buehnenmodus farblich absetzen */
+#stageBody .chordline { color: #f0b429; font-weight: 600; }
 .stage-bar {
   position: absolute; left: 0; right: 0; z-index: 2;
   display: flex; align-items: center; gap: .4rem; padding: .4rem .5rem;
@@ -279,7 +282,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <pre id="stageBody"></pre>
   <div class="stage-bar" id="stageFoot">
     <button type="button" id="stagePlayBtn" aria-label="Auto-Scroll starten">▶</button>
-    <input type="range" id="stageTempo" min="0" max="12" step="0.1" value="0" aria-label="Auto-Scroll-Tempo">
+    <input type="range" id="stageTempo" min="0" max="100" step="1" value="0" aria-label="Auto-Scroll-Tempo">
     <span id="stageTempoLabel">aus</span>
     <button type="button" id="stageFontMinus" aria-label="Schrift kleiner">A−</button>
     <button type="button" id="stageFontPlus" aria-label="Schrift größer">A+</button>
@@ -320,6 +323,9 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       <label>Songtext / ChordPro
         <textarea id="f_body" rows="6" class="mono"></textarea>
       </label>
+      <div class="body-tools">
+        <button type="button" id="f_bodyClean" title="Tabs, Zeilenumbrüche und überflüssige Leerzeilen bereinigen">Bereinigen</button>
+      </div>
       <label>Externer Link (Chords)
         <input type="url" id="f_quelleUrl" placeholder="https://…">
       </label>
@@ -406,10 +412,14 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 <dialog id="importDialog">
   <h2>Import</h2>
   <div id="importPreview"></div>
-  <p class="warning">Das ersetzt <strong>alle</strong> aktuellen Daten unwiderruflich. Vorher ggf. exportieren.</p>
+  <p class="hint"><strong>Zusammenführen</strong> behält alles Vorhandene und ergänzt nur, was fehlt —
+     ein bereits eingetragener Songtext wird nie überschrieben.<br>
+     <strong>Ersetzen</strong> wirft alle aktuellen Daten weg. Vorher ggf. exportieren.</p>
+  <div id="importMergeReport" class="hint"></div>
   <div class="dialog-actions">
     <button type="button" id="importCancelBtn">Abbrechen</button>
-    <button type="button" id="importConfirmBtn" class="danger">Wirklich ersetzen</button>
+    <button type="button" id="importConfirmBtn" class="danger">Alles ersetzen</button>
+    <button type="button" id="importMergeBtn" class="primary">Zusammenführen</button>
   </div>
 </dialog>
 
@@ -686,29 +696,101 @@ if (localStorage.getItem(LS_KEY) === null) {
   saveData(DATA);
 }
 
-/* Nachladen auf Knopfdruck, wenn die App leer ist */
-function ladeStartpaket() {
-  if (DATA.songs.length > 0 &&
-      !confirm('Startpaket laden? Vorhandene Songs bleiben erhalten, die 23 Workshop-Songs kommen dazu.')) return;
-  const paket = buildStartpaket();
-  const vorhandeneTags = new Map(DATA.tags.map(t => [t.name.toLowerCase(), t]));
-  const idMap = {};
-  paket.tags.forEach(t => {
-    const treffer = vorhandeneTags.get(t.name.toLowerCase());
-    if (treffer) { idMap[t.id] = treffer.id; }
-    else { DATA.tags.push(t); idMap[t.id] = t.id; }
+/* ---------- Zusammenführen (vorgezogen aus spec/07) ----------
+   Grundregel: vorhandene Daten gewinnen immer. Es wird nur ergaenzt, nie ueberschrieben —
+   ein selbst eingetragener Songtext geht durch einen Import also nicht verloren. */
+
+function songSchluessel(s) {
+  return (s.titel || '').trim().toLowerCase() + '|' + (s.interpret || '').trim().toLowerCase();
+}
+
+/* Feld gilt als leer, wenn es fehlt, '' oder null/0-artig ohne Aussage ist */
+function istLeer(wert) {
+  return wert === undefined || wert === null || wert === '' ||
+         (Array.isArray(wert) && wert.length === 0);
+}
+
+function mergeImport(neu) {
+  const bericht = { neueSongs: 0, ergaenzteSongs: 0, neueTags: 0, neueSetlists: 0, ergaenzteSetlists: 0 };
+
+  // 1) Tags nach Namen zusammenfuehren, alte IDs auf die eigenen mappen
+  const tagIdMap = {};
+  const tagsNachName = new Map(DATA.tags.map(t => [t.name.trim().toLowerCase(), t]));
+  neu.tags.forEach(t => {
+    const treffer = tagsNachName.get(t.name.trim().toLowerCase());
+    if (treffer) { tagIdMap[t.id] = treffer.id; }
+    else {
+      const kopie = { ...t, id: uuid() };
+      DATA.tags.push(kopie);
+      tagsNachName.set(kopie.name.trim().toLowerCase(), kopie);
+      tagIdMap[t.id] = kopie.id;
+      bericht.neueTags++;
+    }
   });
-  paket.songs.forEach(s => {
-    if (DATA.songs.some(x => x.titel.toLowerCase() === s.titel.toLowerCase() &&
-                             x.interpret.toLowerCase() === s.interpret.toLowerCase())) return;
-    s.tagIds = s.tagIds.map(id => idMap[id] || id);
-    DATA.songs.push(s);
+
+  // 2) Songs: erst ueber die ID, sonst ueber Titel + Interpret
+  const songIdMap = {};
+  const songsNachId = new Map(DATA.songs.map(s => [s.id, s]));
+  const songsNachSchluessel = new Map(DATA.songs.map(s => [songSchluessel(s), s]));
+  const ueberspringen = ['id', 'erstelltAm', 'geaendertAm', 'tagIds'];
+
+  neu.songs.forEach(s => {
+    const treffer = songsNachId.get(s.id) || songsNachSchluessel.get(songSchluessel(s));
+    if (treffer) {
+      songIdMap[s.id] = treffer.id;
+      let veraendert = false;
+      Object.keys(s).forEach(feld => {
+        if (ueberspringen.includes(feld)) return;
+        if (istLeer(treffer[feld]) && !istLeer(s[feld])) { treffer[feld] = s[feld]; veraendert = true; }
+      });
+      // Tags vereinigen
+      s.tagIds.map(id => tagIdMap[id] || id).forEach(id => {
+        if (!treffer.tagIds.includes(id)) { treffer.tagIds.push(id); veraendert = true; }
+      });
+      if (veraendert) { treffer.geaendertAm = nowIso(); bericht.ergaenzteSongs++; }
+    } else {
+      const kopie = { ...s, tagIds: s.tagIds.map(id => tagIdMap[id] || id) };
+      DATA.songs.push(kopie);
+      songsNachId.set(kopie.id, kopie);
+      songsNachSchluessel.set(songSchluessel(kopie), kopie);
+      songIdMap[s.id] = kopie.id;
+      bericht.neueSongs++;
+    }
   });
-  paket.setlists.forEach(sl => {
-    sl.eintraege = sl.eintraege.filter(e => DATA.songs.some(s => s.id === e.songId));
-    if (sl.eintraege.length && !DATA.setlists.some(x => x.name === sl.name)) DATA.setlists.push(sl);
+
+  // 3) Setlists nach Namen; gleichnamige werden um fehlende Songs ergaenzt
+  neu.setlists.forEach(sl => {
+    const eintraege = sl.eintraege
+      .map(e => ({ ...e, songId: songIdMap[e.songId] || e.songId }))
+      .filter(e => DATA.songs.some(s => s.id === e.songId));
+    if (eintraege.length === 0) return;
+    const treffer = DATA.setlists.find(x => x.name.trim().toLowerCase() === sl.name.trim().toLowerCase());
+    if (treffer) {
+      let dazu = 0;
+      eintraege.forEach(e => {
+        if (!treffer.eintraege.some(x => x.songId === e.songId)) { treffer.eintraege.push(e); dazu++; }
+      });
+      if (dazu) bericht.ergaenzteSetlists++;
+    } else {
+      DATA.setlists.push({ ...sl, id: uuid(), eintraege });
+      bericht.neueSetlists++;
+    }
   });
+
   commit();
+  return bericht;
+}
+
+function berichtText(b) {
+  return b.neueSongs + ' Songs neu · ' + b.ergaenzteSongs + ' ergänzt · ' +
+         b.neueTags + ' Tags neu · ' + b.neueSetlists + ' Setlists neu' +
+         (b.ergaenzteSetlists ? ' · ' + b.ergaenzteSetlists + ' Setlists ergänzt' : '');
+}
+
+/* Startpaket jederzeit nachladen — laeuft ueber dieselbe Zusammenführ-Logik */
+function ladeStartpaket() {
+  const b = mergeImport(buildStartpaket());
+  alert('Startpaket geladen:\n' + berichtText(b));
 }
 
 /* ---------- Songs (spec/01 §7) ---------- */
@@ -943,6 +1025,16 @@ let searchTerm = '';
 let activeTagFilter = null;
 /* seit spec/03 ohne Funktion: die Kachel-Vorschau ist durch den Bühnenmodus ersetzt */
 
+/* spec/04 §4 — Volltextsuche im Songtext, aber ohne Akkordzeilen (sonst liefert die Suche
+   nach einem einzelnen Akkordnamen wie "G" oder "D" hunderte Zufallstreffer). */
+function songLyricsSearchText(song) {
+  if (!song.body) return '';
+  return song.body.split('\n')
+    .filter(line => !isChordLine(line))
+    .join(' ')
+    .toLowerCase();
+}
+
 function getVisibleSongs() {
   let list = DATA.songs;
   const q = searchTerm.trim().toLowerCase();
@@ -950,7 +1042,8 @@ function getVisibleSongs() {
     list = list.filter(s =>
       s.titel.toLowerCase().includes(q) ||
       s.interpret.toLowerCase().includes(q) ||
-      (s.alternativTitel || []).some(t => t.toLowerCase().includes(q))
+      (s.alternativTitel || []).some(t => t.toLowerCase().includes(q)) ||
+      songLyricsSearchText(s).includes(q)
     );
   }
   if (activeTagFilter) {
@@ -1415,6 +1508,23 @@ function closeCardMenus() {
   document.querySelectorAll('#songList details.menu[open]').forEach(d => d.removeAttribute('open'));
 }
 
+/* spec/04 §2 — Smart-Paste-Bereinigung. Laeuft nur auf Knopfdruck, nie automatisch beim
+   Einfuegen. Reine Text-Hygiene, kein Erkennen/Ausfuellen anderer Felder. */
+function bereinigeSongtext(text) {
+  return String(text)
+    .replace(/\r\n?/g, '\n')            // Zeilenumbrueche normalisieren
+    .split('\n')
+    .map(line => line.replace(/\t/g, '    ').replace(/\s+$/, ''))   // Tabs -> 4 Spaces, Trailing-Whitespace weg
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')         // max. 1 Leerzeile am Stueck
+    .replace(/^\n+/, '')                // fuehrende Leerzeilen weg
+    .replace(/\n+$/, '');               // folgende Leerzeilen weg
+}
+
+$('f_bodyClean').addEventListener('click', () => {
+  $('f_body').value = bereinigeSongtext($('f_body').value);
+});
+
 $('btnNewSong').addEventListener('click', () => openSongDialog(null));
 $('emptyNewSongBtn').addEventListener('click', () => openSongDialog(null));
 $('emptyImportBtn').addEventListener('click', () => $('importFileInput').click());
@@ -1664,6 +1774,15 @@ $('importConfirmBtn').addEventListener('click', () => {
   $('importDialog').close();
   render();
 });
+/* Zusammenführen statt Ersetzen */
+$('importMergeBtn').addEventListener('click', () => {
+  if (!pendingImport) return;
+  const b = mergeImport(pendingImport);
+  pendingImport = null;
+  $('importMergeReport').textContent = '';
+  $('importDialog').close();
+  alert('Zusammengeführt:\n' + berichtText(b));
+});
 
 /* ============================================================
    spec/03 — Bühnenmodus
@@ -1882,16 +2001,40 @@ function renderStage() {
   $('stageWrapBtn').classList.toggle('on', STAGE.wrap);
 
   const tempo = Number(song.autoscrollTempo) || 0;
-  $('stageTempo').value = tempo;
+  $('stageTempo').value = tempoZuRegler(tempo);
   updateStageTempoLabel(tempo);
   updateStagePlayBtn();
+}
+
+/* spec/03 §4 — Reglerposition 0 = aus, 1…100 spannen den brauchbaren Bereich auf.
+   Nach zwei Praxistests: unter ~4 px/s ist es zum Mitspielen zu langsam, ueber 20 zu schnell.
+   Deshalb kein Totbereich mehr am Anfang. */
+const TEMPO_MIN = 4, TEMPO_MAX = 22;
+
+function reglerZuTempo(pos) {
+  if (pos <= 0) return 0;
+  return Math.round((TEMPO_MIN + (pos - 1) / 99 * (TEMPO_MAX - TEMPO_MIN)) * 10) / 10;
+}
+
+function tempoZuRegler(tempo) {
+  if (!(tempo > 0)) return 0;
+  return Math.round((tempo - TEMPO_MIN) / (TEMPO_MAX - TEMPO_MIN) * 99) + 1;
+}
+
+/* spec/04 §3 — Akkordzeilen farblich absetzen. Reines Anzeige-Feature: song.body, Umbruch
+   und Transponieren bleiben unveraendert, hier wird nur zeilenweise HTML statt Klartext gebaut. */
+function stageBodyHtml(text) {
+  return text.split('\n').map(line => {
+    const safe = esc(line);
+    return isChordLine(line) ? '<span class="chordline">' + safe + '</span>' : safe;
+  }).join('\n');
 }
 
 /* Nur den Textbereich neu aufbauen — ohne Scrollposition und Leisten anzufassen */
 function stageFillBody(song) {
   const body = $('stageBody');
   if (song.body && song.body.trim()) {
-    body.textContent = stageProcessedBody(song);
+    body.innerHTML = stageBodyHtml(stageProcessedBody(song));
   } else {
     body.innerHTML = '<div id="stageEmpty">Für diesen Song ist kein Text hinterlegt.' +
       (isSafeUrl(song.quelleUrl)
@@ -2019,7 +2162,7 @@ let stageTempoTimer = null;
 $('stageTempo').addEventListener('input', (e) => {
   const song = stageSong();
   if (!song) return;
-  const tempo = Number(e.target.value) || 0;
+  const tempo = reglerZuTempo(Number(e.target.value) || 0);
   updateStageTempoLabel(tempo);
   song.autoscrollTempo = tempo > 0 ? tempo : null;   // sofort wirksam fuer den laufenden Scroll
   if (tempo === 0) stopStageScroll();
