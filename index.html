@@ -85,6 +85,12 @@ main { padding: 1rem; max-width: 900px; margin: 0 auto; }
 .card-title { font-weight: 600; }
 .card-sub { color: var(--text-muted); font-size: .9rem; }
 .card-tags { display: flex; flex-wrap: wrap; gap: .3rem; }
+/* spec/06 §3 — dezenter Hinweis auf Kachel fuer lange nicht gespielte Songs */
+.card-stale-badge { color: var(--text-muted); font-size: .78rem; }
+#btnStaleFilter.active { background: var(--accent); color: #fff; }
+.historie-list { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow-y: auto; }
+.historie-list li { display: flex; align-items: center; justify-content: space-between; padding: .2rem 0; font-size: .85rem; }
+.historie-list button { min-height: auto; padding: .1rem .5rem; }
 .chip {
   border: none; border-radius: 999px; padding: .15rem .6rem; font-size: .75rem;
   background: color-mix(in srgb, var(--chip-color, var(--accent)) 25%, transparent);
@@ -153,7 +159,13 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 .tag-manage-row input[type=color] { width: 44px; padding: 0; flex: 0 0 auto; }
 
 .warning { color: var(--danger); font-size: .9rem; }
-.body-tools { margin: -.4rem 0 .7rem; }
+.body-tools { margin: -.4rem 0 .7rem; display: flex; gap: .4rem; flex-wrap: wrap; }
+
+/* spec/05 — Songtext-Feld auf Wunsch grossflaechig bearbeiten */
+#f_body.body-fullscreen {
+  position: fixed; inset: 0; z-index: 200; width: 100vw; height: 100vh;
+  border-radius: 0; font-size: 16px; padding: 1rem;
+}
 
 /* ---------- spec/03 — Buehnenmodus ---------- */
 #stage[hidden] { display: none; }
@@ -239,6 +251,14 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   display: flex; align-items: center; justify-content: space-between; gap: .5rem;
   padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 6px; font-size: .9rem;
 }
+
+/* spec/07 — Teilen */
+.share-check { display: flex; align-items: center; gap: .5rem; margin: .8rem 0 .3rem; cursor: pointer; }
+.share-check input { width: auto; margin: 0; }
+#sh_link { width: 100%; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .75rem; word-break: break-all; }
+#sh_qr { margin: .8rem 0; }
+#si_preview { font-size: .9rem; line-height: 1.5; }
+#si_preview ul { margin: .4rem 0 0; padding-left: 1.2rem; }
 </style>
 </head>
 <body>
@@ -248,10 +268,17 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <div class="header-actions">
     <button type="button" id="btnNewSong">+ Song</button>
     <input type="search" id="searchInput" placeholder="Suche…" aria-label="Songs durchsuchen">
+    <select id="sortSelect" aria-label="Sortierung">
+      <option value="titel">Titel (A–Z)</option>
+      <option value="zuletzt">Zuletzt gespielt</option>
+      <option value="laengsteNicht">Am längsten nicht gespielt</option>
+    </select>
+    <button type="button" id="btnStaleFilter" title="Nur Songs zeigen, die seit über 90 Tagen (oder nie) gespielt wurden">🕑 Lange nicht gespielt</button>
     <button type="button" id="btnTrash" title="Papierkorb">🗑</button>
     <button type="button" id="btnTags" title="Tags verwalten">🏷</button>
     <button type="button" id="btnSetlists" title="Setlists">🎵 Setlists</button>
     <button type="button" id="btnExport" title="Export">⬇ Export</button>
+    <button type="button" id="btnCcli" title="CCLI-Nutzungsreport als CSV exportieren">📊 CCLI-Report</button>
     <button type="button" id="btnImport" title="Import">⬆ Import</button>
     <button type="button" id="btnStartpaket" title="23 Workshop-Songs + Setlists nachladen">🎁 Startpaket</button>
   </div>
@@ -340,6 +367,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       </label>
       <div class="body-tools">
         <button type="button" id="f_bodyClean" title="Tabs, Zeilenumbrüche und überflüssige Leerzeilen bereinigen">Bereinigen</button>
+        <button type="button" id="f_bodyFsBtn" title="Textfeld groß anzeigen">⛶ Groß</button>
       </div>
       <label>Externer Link (Chords)
         <input type="url" id="f_quelleUrl" placeholder="https://…">
@@ -397,6 +425,12 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       </div>
     </fieldset>
 
+    <fieldset id="f_historieSection" hidden>
+      <legend>Nutzungs-Historie</legend>
+      <p id="f_historieSummary" class="hint"></p>
+      <ul id="f_historieList" class="historie-list"></ul>
+    </fieldset>
+
     <p id="songFormError" class="error" hidden></p>
 
     <div class="dialog-actions">
@@ -405,6 +439,24 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       <button type="submit" class="primary">Speichern</button>
     </div>
   </form>
+</dialog>
+
+<!-- spec/06 §6 -->
+<dialog id="ccliDialog">
+  <h2>CCLI-Report exportieren</h2>
+  <p class="hint">CSV mit Titel, Interpret, CCLI-Nummer und Nutzungsanzahl im gewählten Zeitraum.
+    Diese Auswertung ersetzt keine Rechtsberatung — die korrekte Meldung an CCLI liegt in der
+    Verantwortung der nutzenden Organisation.</p>
+  <label>Von
+    <input type="date" id="ccli_von">
+  </label>
+  <label>Bis
+    <input type="date" id="ccli_bis">
+  </label>
+  <div class="dialog-actions">
+    <button type="button" id="ccliCancelBtn">Abbrechen</button>
+    <button type="button" id="ccliExportBtn" class="primary">CSV exportieren</button>
+  </div>
 </dialog>
 
 <!-- spec/01 §9 -->
@@ -483,6 +535,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <p class="hint" id="sd_dauer" hidden></p>
   <button type="button" id="sd_startBtn" class="primary">▶ Starten</button>
   <button type="button" id="sd_editBtn">Details bearbeiten</button>
+  <button type="button" id="sd_shareBtn" title="Diese Setlist als Link oder QR-Code weitergeben">🔗 Teilen</button>
 
   <div class="setlist-entries" id="setlistEntries"></div>
 
@@ -508,6 +561,50 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   </div>
 </dialog>
 
+<!-- spec/07 §4 — Setlist teilen -->
+<dialog id="shareDialog">
+  <h2>Setlist teilen</h2>
+  <p class="card-sub" id="sh_meta"></p>
+
+  <label class="share-check">
+    <input type="checkbox" id="sh_mitText">
+    Songtexte mitschicken
+  </label>
+  <p class="hint" id="sh_textHint" hidden>Der Link enthält dann die vollständigen Songtexte.
+    Nur an Leute weitergeben, die die Texte ohnehin haben dürfen.</p>
+  <p class="hint" id="sh_fileHint" hidden>Die App liegt gerade als lokale Datei auf diesem Gerät.
+    Der Link funktioniert beim Empfänger nur, wenn die App bei ihm unter demselben Pfad liegt.
+    Sobald die App online liegt, funktionieren geteilte Links überall.</p>
+
+  <textarea id="sh_link" rows="3" readonly aria-label="Geteilter Link"></textarea>
+  <p class="hint" id="sh_len"></p>
+
+  <div class="dialog-actions" style="justify-content:flex-start;">
+    <button type="button" id="sh_copyBtn" class="primary">📋 Kopieren</button>
+    <button type="button" id="sh_shareBtn" hidden>↗ Teilen…</button>
+  </div>
+
+  <div id="sh_qr"></div>
+  <p class="hint" id="sh_qrHint" hidden>Für einen QR-Code ist die Setlist zu groß. Der Link oben
+    funktioniert trotzdem — oder ohne Songtexte teilen.</p>
+
+  <div class="dialog-actions">
+    <button type="button" id="sh_closeBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/07 §6 — geteilten Link empfangen -->
+<dialog id="shareImportDialog">
+  <h2>Geteilte Setlist</h2>
+  <div id="si_preview"></div>
+  <p class="hint">Übernehmen ergänzt nur, was fehlt. Deine vorhandenen Songs, Texte, Notizen und
+    Bewertungen bleiben unverändert.</p>
+  <div class="dialog-actions">
+    <button type="button" id="si_cancelBtn">Abbrechen</button>
+    <button type="button" id="si_confirmBtn" class="primary">Übernehmen</button>
+  </div>
+</dialog>
+
 <!-- spec/05 — Kapo-Vorschlag -->
 <dialog id="kapoDialog">
   <h2>Kapo-Vorschlag</h2>
@@ -521,7 +618,13 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 
 <!-- spec/05 — Griffbild-Overlay -->
 <dialog id="chordDialog">
-  <h2 id="chordDialogTitle"></h2>
+  <div style="display:flex; align-items:center; gap:.5rem;">
+    <h2 id="chordDialogTitle" style="margin:0; flex:1 1 auto;"></h2>
+    <button type="button" id="chordInfoBtn" title="Was bedeuten ×, ○ und die Punkte?" aria-label="Erklärung anzeigen">?</button>
+  </div>
+  <p class="hint" id="chordInfoText" hidden>× = Saite nicht mitspielen · ○ = Saite offen (kein Finger) ·
+    Punkt = hier mit einem Finger auf den Bund drücken. Steht rechts eine Zahl mit „fr" (z. B. „4fr"),
+    ist das nicht der 1. Bund, sondern der angegebene.</p>
   <div id="chordDialogBody"></div>
   <div class="dialog-actions">
     <button type="button" id="chordCloseBtn">Schließen</button>
@@ -904,6 +1007,15 @@ function purgeFromTrash(entryId) {
   if (entry.typ === 'song') {
     const songId = entry.datensatz.id;
     DATA.setlists.forEach(sl => { sl.eintraege = sl.eintraege.filter(en => en.songId !== songId); });
+    /* spec/06 §5 — Historien-Eintraege bleiben erhalten, aber mit Klartext-Snapshot,
+       sonst verliert der CCLI-Report nachtraeglich geloeschte Songs. */
+    DATA.historie.forEach(h => {
+      if (h.songId === songId) {
+        h.titelSnapshot = entry.datensatz.titel;
+        h.interpretSnapshot = entry.datensatz.interpret;
+        h.ccliSnapshot = entry.datensatz.ccli || '';
+      }
+    });
   } else if (entry.typ === 'setlist') {
     const setlistId = entry.datensatz.id;
     DATA.historie.forEach(h => { if (h.setlistId === setlistId) h.setlistId = null; });
@@ -1061,7 +1173,37 @@ function setlistDauerLabel(setlist) {
 
 let searchTerm = '';
 let activeTagFilter = null;
+let sortMode = 'titel';       // spec/06 §3 — 'titel' | 'zuletzt' | 'laengsteNicht', reiner UI-State
+let staleFilterActive = false; // spec/06 §3 — Toggle "Lange nicht gespielt"
 /* seit spec/03 ohne Funktion: die Kachel-Vorschau ist durch den Bühnenmodus ersetzt */
+
+/* spec/06 §3 — juengstes Nutzungsdatum eines Songs, oder null wenn nie gespielt */
+function songLastPlayed(song) {
+  let last = null;
+  DATA.historie.forEach(h => {
+    if (h.songId !== song.id) return;
+    if (!last || h.datum > last) last = h.datum;
+  });
+  return last;
+}
+
+const STALE_TAGE = 90; // spec/06 §3 — fester Schwellwert, bewusst kein Einstellungsfeld
+
+function songIsStale(song) {
+  const last = songLastPlayed(song);
+  if (!last) return true;
+  const tageHer = (Date.now() - new Date(last + 'T00:00:00').getTime()) / 86400000;
+  return tageHer > STALE_TAGE;
+}
+
+/* spec/06 §3 — Kachel-Badge-Text, nur fuer songIsStale()===true aufgerufen */
+function staleBadgeLabel(song) {
+  const last = songLastPlayed(song);
+  if (!last) return '🕑 noch nie gespielt';
+  const tageHer = Math.floor((Date.now() - new Date(last + 'T00:00:00').getTime()) / 86400000);
+  const monateHer = Math.floor(tageHer / 30);
+  return '🕑 zuletzt vor ' + (monateHer >= 1 ? monateHer + (monateHer === 1 ? ' Monat' : ' Monaten') : tageHer + ' Tagen');
+}
 
 /* spec/04 §4 — Volltextsuche im Songtext, aber ohne Akkordzeilen (sonst liefert die Suche
    nach einem einzelnen Akkordnamen wie "G" oder "D" hunderte Zufallstreffer). */
@@ -1087,7 +1229,30 @@ function getVisibleSongs() {
   if (activeTagFilter) {
     list = list.filter(s => s.tagIds.includes(activeTagFilter));
   }
-  return [...list].sort((a, b) => a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' }));
+  if (staleFilterActive) {
+    list = list.filter(songIsStale);
+  }
+  list = [...list];
+  if (sortMode === 'zuletzt') {
+    list.sort((a, b) => {
+      const la = songLastPlayed(a), lb = songLastPlayed(b);
+      if (!la && !lb) return a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' });
+      if (!la) return 1;   // nie gespielt -> ans Ende
+      if (!lb) return -1;
+      return lb.localeCompare(la); // neuestes zuerst
+    });
+  } else if (sortMode === 'laengsteNicht') {
+    list.sort((a, b) => {
+      const la = songLastPlayed(a), lb = songLastPlayed(b);
+      if (!la && !lb) return a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' });
+      if (!la) return -1;  // nie gespielt -> ganz vorne, braucht am dringendsten Aufmerksamkeit
+      if (!lb) return 1;
+      return la.localeCompare(lb); // aeltestes zuerst
+    });
+  } else {
+    list.sort((a, b) => a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' }));
+  }
+  return list;
 }
 
 /* spec/01 §5, geaendert in spec/03 §2:
@@ -1121,6 +1286,7 @@ function songCardHtml(song) {
       '<button type="button" class="card-main" data-action="open" data-id="' + esc(song.id) + '">' +
         '<div class="card-title">' + (esc(song.titel) || '(ohne Titel)') + '</div>' +
         '<div class="card-sub">' + esc(song.interpret) + '</div>' +
+        (songIsStale(song) ? '<div class="card-stale-badge">' + esc(staleBadgeLabel(song)) + '</div>' : '') +
       '</button>' +
       (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
       '<div class="card-controls">' +
@@ -1224,6 +1390,9 @@ function openSongDialog(id) {
   $('songDeleteBtn').hidden = !song;
   $('songFormError').hidden = true;
 
+  $('f_body').classList.remove('body-fullscreen');   // spec/05 — nie im Vollbild-Zustand oeffnen
+  $('f_bodyFsBtn').textContent = '⛶ Groß';
+
   $('f_titel').value = song ? song.titel : '';
   $('f_interpret').value = song ? song.interpret : '';
   $('f_alternativTitel').value = song ? (song.alternativTitel || []).join(', ') : '';
@@ -1246,9 +1415,40 @@ function openSongDialog(id) {
   formTagIds = new Set(song ? song.tagIds : []);
   renderFormStars();
   renderTagCheckboxes();
+  renderHistorieSection(song);
 
   $('songDialog').showModal();
 }
+
+/* spec/06 §4 — Historien-Abschnitt im Song-Dialog. Nur fuer bestehende Songs sichtbar,
+   letzte 10 Eintraege, einzeln loeschbar (kein manuelles Hinzufuegen, siehe spec/06 §4/§7). */
+function renderHistorieSection(song) {
+  const section = $('f_historieSection');
+  if (!song) { section.hidden = true; return; }
+  const eintraege = DATA.historie
+    .filter(h => h.songId === song.id)
+    .sort((a, b) => b.datum.localeCompare(a.datum));
+  section.hidden = false;
+  $('f_historieSummary').textContent = eintraege.length === 0
+    ? 'Noch nie gespielt.'
+    : eintraege.length + '-mal gespielt, zuletzt am ' + fmtDate(eintraege[0].datum) + '.';
+  $('f_historieList').innerHTML = eintraege.slice(0, 10).map(h =>
+    '<li><span>' + esc(fmtDate(h.datum)) + '</span>' +
+    '<button type="button" data-action="removeHistorieEntry" data-id="' + esc(h.id) + '" aria-label="Eintrag entfernen">✕</button></li>'
+  ).join('');
+}
+
+function removeHistorieEntry(entryId) {
+  DATA.historie = DATA.historie.filter(h => h.id !== entryId);
+  commit();
+  renderHistorieSection(DATA.songs.find(s => s.id === editingSongId) || null);
+}
+
+$('f_historieList').addEventListener('click', (e) => {
+  const btn = e.target.closest('[data-action="removeHistorieEntry"]');
+  if (!btn) return;
+  removeHistorieEntry(btn.dataset.id);
+});
 
 function readSongForm() {
   return {
@@ -1491,6 +1691,57 @@ function doExport() {
   render();
 }
 
+/* spec/06 §6 — CCLI-Nutzungsreport als CSV. Fallback auf titelSnapshot/interpretSnapshot/
+   ccliSnapshot fuer bereits endgueltig geloeschte Songs (spec/06 §5). */
+function openCcliDialog() {
+  const heute = new Date();
+  const vor90 = new Date(Date.now() - 90 * 86400000);
+  $('ccli_bis').value = heute.toISOString().slice(0, 10);
+  $('ccli_von').value = vor90.toISOString().slice(0, 10);
+  $('ccliDialog').showModal();
+}
+
+function csvFeld(s) { return '"' + String(s ?? '').replace(/"/g, '""') + '"'; }
+
+function exportCcliCsv() {
+  const von = $('ccli_von').value;
+  const bis = $('ccli_bis').value;
+  if (!von || !bis || von > bis) { alert('Bitte einen gültigen Zeitraum wählen (Von ≤ Bis).'); return; }
+
+  const counts = new Map(); // songId -> { titel, interpret, ccli, anzahl }
+  DATA.historie.forEach(h => {
+    if (h.datum < von || h.datum > bis) return;
+    const song = DATA.songs.find(s => s.id === h.songId);
+    const titel = song ? song.titel : (h.titelSnapshot || '(gelöschter Song)');
+    const interpret = song ? song.interpret : (h.interpretSnapshot || '');
+    const ccli = song ? (song.ccli || '') : (h.ccliSnapshot || '');
+    if (!counts.has(h.songId)) counts.set(h.songId, { titel, interpret, ccli, anzahl: 0 });
+    counts.get(h.songId).anzahl++;
+  });
+
+  const zeile = ['Titel', 'Interpret', 'CCLI-Nr.', 'Anzahl', 'Zeitraum'];
+  const zeitraum = von + ' bis ' + bis;
+  const rows = Array.from(counts.values())
+    .sort((a, b) => a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' }));
+
+  let csv = '# Diese Auswertung ersetzt keine Rechtsberatung. Die korrekte Meldung an CCLI liegt in der Verantwortung der nutzenden Organisation.\n';
+  csv += zeile.join(';') + '\n';
+  rows.forEach(r => {
+    csv += [csvFeld(r.titel), csvFeld(r.interpret), csvFeld(r.ccli), r.anzahl, csvFeld(zeitraum)].join(';') + '\n';
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ccli-report_' + von + '_bis_' + bis + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  $('ccliDialog').close();
+}
+
 let pendingImport = null;
 
 function handleImportFileSelected(e) {
@@ -1563,6 +1814,13 @@ $('f_bodyClean').addEventListener('click', () => {
   $('f_body').value = bereinigeSongtext($('f_body').value);
 });
 
+/* spec/05 — Textfeld auf Wunsch grossflaechig anzeigen, dieselbe Textarea bleibt bestehen,
+   kein zweites Feld zum Synchronisieren. */
+$('f_bodyFsBtn').addEventListener('click', () => {
+  const gross = $('f_body').classList.toggle('body-fullscreen');
+  $('f_bodyFsBtn').textContent = gross ? '✕ Zurück' : '⛶ Groß';
+});
+
 /* spec/05 §2.4 — Kapo-Vorschlag rechnet auf dem aktuell eingegebenen (ggf. noch
    ungespeicherten) Songtext, nicht auf dem zuletzt gespeicherten song.body. */
 function openKapoDialog() {
@@ -1600,8 +1858,19 @@ $('btnStartpaket').addEventListener('click', ladeStartpaket);
 $('searchInput').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); });
 $('clearTagFilter').addEventListener('click', () => { activeTagFilter = null; render(); });
 
+/* spec/06 §3 */
+$('sortSelect').addEventListener('change', (e) => { sortMode = e.target.value; renderList(); });
+$('btnStaleFilter').addEventListener('click', () => {
+  staleFilterActive = !staleFilterActive;
+  $('btnStaleFilter').classList.toggle('active', staleFilterActive);
+  renderList();
+});
+
 $('btnExport').addEventListener('click', doExport);
 $('reminderExportBtn').addEventListener('click', doExport);
+$('btnCcli').addEventListener('click', openCcliDialog);
+$('ccliCancelBtn').addEventListener('click', () => $('ccliDialog').close());
+$('ccliExportBtn').addEventListener('click', exportCcliCsv);
 $('btnImport').addEventListener('click', () => $('importFileInput').click());
 $('importFileInput').addEventListener('change', handleImportFileSelected);
 
@@ -1759,14 +2028,20 @@ $('setlistEntries').addEventListener('click', (e) => {
     resetEntryTonart(currentSetlistId, index);
     renderSetlistDetail();
   } else if (btn.dataset.action === 'playEntry') {
-    /* spec/03 §2 */
+    /* spec/03 §2 — Dialog schliessen, BEVOR der Buehnenmodus oeffnet: <dialog> liegt im
+       Browser-Top-Layer und wuerde sonst weiter ueber dem Buehnenmodus liegen (sichtbar
+       "passiert nichts", Bug gemeldet von Marco am 09.08.2026). */
+    $('setlistDetailDialog').close();
     startSetlistStage(currentSetlistId, index);
   }
 });
 
 /* spec/03 §2 */
 $('sd_startBtn').addEventListener('click', () => {
-  if (currentSetlistId) startSetlistStage(currentSetlistId, 0);
+  if (currentSetlistId) {
+    $('setlistDetailDialog').close();
+    startSetlistStage(currentSetlistId, 0);
+  }
 });
 $('setlistEntries').addEventListener('change', (e) => {
   if (!currentSetlistId) return;
@@ -1859,6 +2134,7 @@ const STAGE = {
   keys: [],           // Tonart je Position (aus der Setlist), gleiche Laenge wie ids
   index: 0,
   fromSetlist: false,
+  setlistId: null,    // spec/06 §2 — fuer Historien-Eintrag, nur gesetzt wenn fromSetlist
   running: false,     // Auto-Scroll laeuft
   rafId: null,
   lastTs: 0,
@@ -2057,7 +2333,10 @@ const CHORD_SHAPES = {
    keine Annaeherung an einen aehnlichen Akkord, das waere Raten bei Fingersaetzen. */
 function chordShapeKey(tok) {
   const base = String(tok || '').split('/')[0];
-  const m = base.match(/^([A-G][#b]?)(m(?!aj))?(7)?/);
+  /* $-Anker: der GESAMTE Rest des Tokens muss aufgehen. Ohne Anker wuerde z. B. "A2"
+     (Asus2/Aadd2 — ein anderer Griff als A) faelschlich als "A" erkannt. Bug gemeldet
+     von Marco am 09.08.2026. */
+  const m = base.match(/^([A-G][#b]?)(m(?!aj))?(7)?$/);
   if (!m) return null;
   const rootIdx = noteIndex(m[1]);
   if (rootIdx < 0) return null;
@@ -2106,6 +2385,7 @@ function renderChordSvg(shape) {
 
 function openChordDialog(chordText) {
   $('chordDialogTitle').textContent = chordText;
+  $('chordInfoText').hidden = true;             // bei jedem neuen Akkord wieder einklappen
   const key = chordShapeKey(chordText);
   $('chordDialogBody').innerHTML = key
     ? renderChordSvg(CHORD_SHAPES[key])
@@ -2113,6 +2393,9 @@ function openChordDialog(chordText) {
   $('chordDialog').showModal();
 }
 $('chordCloseBtn').addEventListener('click', () => $('chordDialog').close());
+$('chordInfoBtn').addEventListener('click', () => {
+  $('chordInfoText').hidden = !$('chordInfoText').hidden;
+});
 
 /* Wie viele Monospace-Zeichen passen bei der aktuellen Schriftgroesse nebeneinander? */
 function stageColumns() {
@@ -2147,14 +2430,15 @@ function startSetlistStage(setlistId, index) {
   // Index auf die bereinigte Liste umrechnen
   const wantedId = setlist.eintraege[index] ? setlist.eintraege[index].songId : null;
   const start = Math.max(0, ids.indexOf(wantedId));
-  openStage(ids, start, true, keys);
+  openStage(ids, start, true, keys, setlistId);
 }
 
-function openStage(ids, index, fromSetlist, keys) {
+function openStage(ids, index, fromSetlist, keys, setlistId) {
   STAGE.ids = ids;
   STAGE.keys = keys || [];
   STAGE.index = index || 0;
   STAGE.fromSetlist = !!fromSetlist;
+  STAGE.setlistId = fromSetlist ? (setlistId || null) : null;
   STAGE.running = false;
   STAGE.transpose = 0;
   STAGE.vorsaenger = false;
@@ -2177,9 +2461,25 @@ function closeStage() {
 
 function stageIsOpen() { return !$('stage').hidden; }
 
+/* spec/06 §2 — automatisches Nutzungsprotokoll. Dedup-Schluessel: songId + datum + setlistId
+   (null zaehlt als eigener Wert), damit Testen/Nachschauen am selben Tag die Historie nicht
+   aufblaeht, aber derselbe Song am selben Tag in zwei verschiedenen Setlists getrennt zaehlt. */
+function logHistorie(songId) {
+  if (!songId) return;
+  const datum = new Date().toISOString().slice(0, 10);
+  const setlistId = STAGE.fromSetlist ? STAGE.setlistId : null;
+  const exists = DATA.historie.some(h =>
+    h.songId === songId && h.datum === datum && h.setlistId === setlistId
+  );
+  if (exists) return;
+  DATA.historie.push({ id: uuid(), songId, setlistId, datum, quelle: 'auto' });
+  commit();
+}
+
 function renderStage() {
   const song = stageSong();
   if (!song) { closeStage(); return; }
+  logHistorie(song.id);
 
   const tonart = (STAGE.fromSetlist ? STAGE.keys[STAGE.index] : '') || song.tonartWir || song.tonartOriginal || '';
   $('stageTitle').textContent = song.titel || '(ohne Titel)';
@@ -2529,10 +2829,540 @@ document.querySelectorAll('dialog').forEach(dialog => {
 });
 
 /* ============================================================
+   spec/07 — Setlist teilen: Link-Codec + QR-Encoder
+   ============================================================ */
+
+/* ---------- spec/07 §3.4 — base64url ---------- */
+
+function b64urlFromBytes(bytes) {
+  let bin = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function bytesFromB64url(s) {
+  const b = String(s).replace(/-/g, '+').replace(/_/g, '/');
+  const pad = b.length % 4 ? '='.repeat(4 - (b.length % 4)) : '';
+  const bin = atob(b + pad);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+/* spec/07 §2.3 — native Kompression statt Fremdbibliothek. Fehlt die API, wird roh gepackt;
+   das Praefix-Byte sagt dem Empfaenger, welcher Fall vorliegt. */
+async function deflateBytes(bytes) {
+  if (typeof CompressionStream !== 'function') return null;
+  try {
+    const stream = new Blob([bytes]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  } catch (e) { return null; }
+}
+
+async function inflateBytes(bytes) {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function packShare(payload) {
+  const raw = new TextEncoder().encode(JSON.stringify(payload));
+  const comp = await deflateBytes(raw);
+  const nutzeComp = !!comp && comp.length < raw.length;
+  const body = nutzeComp ? comp : raw;
+  const out = new Uint8Array(body.length + 1);
+  out[0] = nutzeComp ? 1 : 0;
+  out.set(body, 1);
+  return b64urlFromBytes(out);
+}
+
+async function unpackShare(s) {
+  const all = bytesFromB64url(s);
+  if (all.length < 2) throw new Error('leer');
+  const body = all.subarray(1);
+  const raw = all[0] === 1 ? await inflateBytes(body) : body;
+  return JSON.parse(new TextDecoder().decode(raw));
+}
+
+/* ---------- spec/07 §5 — QR-Encoder (Byte-Modus, Fehlerkorrektur L, Version 1-40) ----------
+   Nach ISO/IEC 18004. Ausgabe: { size, mods, version, mask } oder null, wenn zu lang. */
+
+/* Die beiden Tabellen, die sich nicht herleiten lassen — Stufe L, Index = Version */
+const QR_ECC_PER_BLOCK_L = [-1,
+  7, 10, 15, 20, 26, 18, 20, 24, 30, 18, 20, 24, 26, 30, 22, 24, 28, 30, 28, 28,
+  28, 28, 30, 30, 26, 28, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30];
+const QR_NUM_BLOCKS_L = [-1,
+  1, 1, 1, 1, 1, 2, 2, 2, 2, 4, 4, 4, 4, 4, 6, 6, 6, 6, 7, 8,
+  8, 9, 9, 10, 12, 12, 12, 13, 14, 15, 16, 17, 18, 19, 19, 20, 21, 22, 24, 25];
+
+function qrRawDataModules(ver) {
+  let result = (16 * ver + 128) * ver + 64;
+  if (ver >= 2) {
+    const na = Math.floor(ver / 7) + 2;
+    result -= (25 * na - 10) * na - 55;
+    if (ver >= 7) result -= 36;
+  }
+  return result;
+}
+
+/* Nutzbare Datencodewoerter einer Version bei Stufe L */
+function qrDataCodewords(ver) {
+  return Math.floor(qrRawDataModules(ver) / 8) - QR_ECC_PER_BLOCK_L[ver] * QR_NUM_BLOCKS_L[ver];
+}
+
+/* Zeichenzahl-Feld im Byte-Modus: 8 Bit bis Version 9, danach 16 Bit */
+function qrCharCountBits(ver) { return ver <= 9 ? 8 : 16; }
+
+function qrByteCapacity(ver) {
+  return qrDataCodewords(ver) - 2 - (qrCharCountBits(ver) > 8 ? 1 : 0);
+}
+
+/* ---------- Galois-Feld GF(256), Generator 0x11D ---------- */
+
+function gfMul(x, y) {
+  let z = 0;
+  for (let i = 7; i >= 0; i--) {
+    z = (z << 1) ^ ((z >>> 7) * 0x11D);
+    z ^= ((y >>> i) & 1) * x;
+  }
+  return z & 0xFF;
+}
+
+function rsDivisor(degree) {
+  const result = new Uint8Array(degree);
+  result[degree - 1] = 1;
+  let root = 1;
+  for (let i = 0; i < degree; i++) {
+    for (let j = 0; j < degree; j++) {
+      result[j] = gfMul(result[j], root);
+      if (j + 1 < degree) result[j] ^= result[j + 1];
+    }
+    root = gfMul(root, 0x02);
+  }
+  return result;
+}
+
+function rsRemainder(data, divisor) {
+  const result = new Uint8Array(divisor.length);
+  for (let n = 0; n < data.length; n++) {
+    const factor = data[n] ^ result[0];
+    result.copyWithin(0, 1);
+    result[result.length - 1] = 0;
+    for (let i = 0; i < divisor.length; i++) result[i] ^= gfMul(divisor[i], factor);
+  }
+  return result;
+}
+
+/* ---------- Bitstrom -> Codewoerter ---------- */
+
+function qrBuildCodewords(bytes, ver) {
+  const bits = [];
+  const push = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+  push(4, 4);                                        // Modus: Byte
+  push(bytes.length, qrCharCountBits(ver));
+  for (let i = 0; i < bytes.length; i++) push(bytes[i], 8);
+
+  const cap = qrDataCodewords(ver) * 8;
+  push(0, Math.min(4, cap - bits.length));
+  push(0, (8 - bits.length % 8) % 8);
+  for (let pad = 0xEC; bits.length < cap; pad ^= 0xEC ^ 0x11) push(pad, 8);
+
+  const out = [];
+  for (let i = 0; i < bits.length; i += 8) {
+    let b = 0;
+    for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+    out.push(b);
+  }
+  return out;
+}
+
+function qrAddEccAndInterleave(data, ver) {
+  const numBlocks = QR_NUM_BLOCKS_L[ver];
+  const eccLen = QR_ECC_PER_BLOCK_L[ver];
+  const rawCodewords = Math.floor(qrRawDataModules(ver) / 8);
+  const numShort = numBlocks - rawCodewords % numBlocks;
+  const shortLen = Math.floor(rawCodewords / numBlocks);
+  const div = rsDivisor(eccLen);
+
+  const blocks = [];
+  for (let i = 0, k = 0; i < numBlocks; i++) {
+    const len = shortLen - eccLen + (i < numShort ? 0 : 1);
+    const dat = data.slice(k, k + len);
+    k += len;
+    const ecc = rsRemainder(dat, div);
+    if (i < numShort) dat.push(0);                   // Platzhalter, damit alle Bloecke gleich lang sind
+    blocks.push(dat.concat(Array.from(ecc)));
+  }
+
+  const result = [];
+  for (let i = 0; i < blocks[0].length; i++) {
+    for (let j = 0; j < blocks.length; j++) {
+      if (i !== shortLen - eccLen || j >= numShort) result.push(blocks[j][i]);
+    }
+  }
+  return result;
+}
+
+/* ---------- Matrix ---------- */
+
+function qrAlignPositions(ver) {
+  if (ver === 1) return [];
+  const num = Math.floor(ver / 7) + 2;
+  const size = ver * 4 + 17;
+  const step = (ver === 32) ? 26 : Math.ceil((ver * 4 + 4) / (num * 2 - 2)) * 2;
+  const result = [6];
+  for (let pos = size - 7; result.length < num; pos -= step) result.splice(1, 0, pos);
+  return result;
+}
+
+function qrBit(x, i) { return ((x >>> i) & 1) !== 0; }
+
+function qrBuildMatrix(codewords, ver) {
+  const size = ver * 4 + 17;
+  const mods = [], fn = [];
+  for (let y = 0; y < size; y++) {
+    mods.push(new Array(size).fill(false));
+    fn.push(new Array(size).fill(false));
+  }
+  const setFn = (x, y, v) => {
+    if (x < 0 || y < 0 || x >= size || y >= size) return;
+    mods[y][x] = v; fn[y][x] = true;
+  };
+
+  // Taktzeilen
+  for (let i = 0; i < size; i++) { setFn(6, i, i % 2 === 0); setFn(i, 6, i % 2 === 0); }
+
+  // Sucherquadrate samt Trennlinien
+  [[3, 3], [size - 4, 3], [3, size - 4]].forEach(p => {
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const d = Math.max(Math.abs(dx), Math.abs(dy));
+      setFn(p[0] + dx, p[1] + dy, d !== 2 && d !== 4);
+    }
+  });
+
+  // Ausrichtungsquadrate
+  const ap = qrAlignPositions(ver);
+  for (let i = 0; i < ap.length; i++) for (let j = 0; j < ap.length; j++) {
+    if ((i === 0 && j === 0) || (i === 0 && j === ap.length - 1) || (i === ap.length - 1 && j === 0)) continue;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+      setFn(ap[i] + dx, ap[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+    }
+  }
+
+  // Versionsinformation (ab Version 7)
+  if (ver >= 7) {
+    let rem = ver;
+    for (let i = 0; i < 12; i++) rem = (rem << 1) ^ ((rem >>> 11) * 0x1F25);
+    const bits = (ver << 12) | rem;
+    for (let i = 0; i < 18; i++) {
+      const b = qrBit(bits, i), a = size - 11 + i % 3, c = Math.floor(i / 3);
+      setFn(a, c, b); setFn(c, a, b);
+    }
+  }
+
+  const drawFormat = (mask) => {
+    const d = (1 << 3) | mask;                       // Stufe L -> formatBits 1
+    let rem = d;
+    for (let i = 0; i < 10; i++) rem = (rem << 1) ^ ((rem >>> 9) * 0x537);
+    const bits = ((d << 10) | rem) ^ 0x5412;
+    for (let i = 0; i <= 5; i++) setFn(8, i, qrBit(bits, i));
+    setFn(8, 7, qrBit(bits, 6));
+    setFn(8, 8, qrBit(bits, 7));
+    setFn(7, 8, qrBit(bits, 8));
+    for (let i = 9; i < 15; i++) setFn(14 - i, 8, qrBit(bits, i));
+    for (let i = 0; i < 8; i++) setFn(size - 1 - i, 8, qrBit(bits, i));
+    for (let i = 8; i < 15; i++) setFn(8, size - 15 + i, qrBit(bits, i));
+    setFn(8, size - 8, true);
+  };
+  drawFormat(0);
+
+  // Daten im Zickzack
+  let i = 0;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let vert = 0; vert < size; vert++) {
+      for (let j = 0; j < 2; j++) {
+        const x = right - j;
+        const upward = ((right + 1) & 2) === 0;
+        const y = upward ? size - 1 - vert : vert;
+        if (!fn[y][x] && i < codewords.length * 8) {
+          mods[y][x] = qrBit(codewords[i >>> 3], 7 - (i & 7));
+          i++;
+        }
+      }
+    }
+  }
+
+  return { size, mods, fn, drawFormat };
+}
+
+const QR_MASKS = [
+  (x, y) => (x + y) % 2 === 0,
+  (x, y) => y % 2 === 0,
+  (x, y) => x % 3 === 0,
+  (x, y) => (x + y) % 3 === 0,
+  (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0,
+  (x, y) => (x * y) % 2 + (x * y) % 3 === 0,
+  (x, y) => ((x * y) % 2 + (x * y) % 3) % 2 === 0,
+  (x, y) => ((x + y) % 2 + (x * y) % 3) % 2 === 0
+];
+
+const QR_FINDER_A = [true, false, true, true, true, false, true, false, false, false, false];
+const QR_FINDER_B = [false, false, false, false, true, false, true, true, true, false, true];
+
+function qrLinePenalty(line) {
+  let score = 0, run = 1;
+  for (let i = 1; i < line.length; i++) {
+    if (line[i] === line[i - 1]) { run++; if (run === 5) score += 3; else if (run > 5) score++; }
+    else run = 1;
+  }
+  for (let i = 0; i + 11 <= line.length; i++) {
+    let a = true, b = true;
+    for (let j = 0; j < 11; j++) {
+      if (line[i + j] !== QR_FINDER_A[j]) a = false;
+      if (line[i + j] !== QR_FINDER_B[j]) b = false;
+    }
+    if (a || b) score += 40;
+  }
+  return score;
+}
+
+function qrPenalty(mods, size) {
+  let score = 0, dark = 0;
+  for (let y = 0; y < size; y++) {
+    score += qrLinePenalty(mods[y]);
+    for (let x = 0; x < size; x++) if (mods[y][x]) dark++;
+  }
+  for (let x = 0; x < size; x++) {
+    const col = [];
+    for (let y = 0; y < size; y++) col.push(mods[y][x]);
+    score += qrLinePenalty(col);
+  }
+  for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) {
+    const c = mods[y][x];
+    if (c === mods[y][x + 1] && c === mods[y + 1][x] && c === mods[y + 1][x + 1]) score += 3;
+  }
+  const total = size * size;
+  score += (Math.ceil(Math.abs(dark * 20 - total * 10) / total) - 1) * 10;
+  return score;
+}
+
+function applyQrMask(m, mask) {
+  const f = QR_MASKS[mask];
+  for (let y = 0; y < m.size; y++) for (let x = 0; x < m.size; x++) {
+    if (!m.fn[y][x] && f(x, y)) m.mods[y][x] = !m.mods[y][x];
+  }
+}
+
+/* Haupteinstieg: Text -> Matrix, oder null wenn er nicht in Version 40-L passt (spec/07 §5.3) */
+function qrEncode(text) {
+  const bytes = new TextEncoder().encode(text);
+  let ver = 0;
+  for (let v = 1; v <= 40; v++) { if (qrByteCapacity(v) >= bytes.length) { ver = v; break; } }
+  if (!ver) return null;
+
+  const codewords = qrAddEccAndInterleave(qrBuildCodewords(bytes, ver), ver);
+  const m = qrBuildMatrix(codewords, ver);
+
+  let bestMask = 0, bestScore = Infinity;
+  for (let mask = 0; mask < 8; mask++) {
+    applyQrMask(m, mask);
+    m.drawFormat(mask);
+    const s = qrPenalty(m.mods, m.size);
+    if (s < bestScore) { bestScore = s; bestMask = mask; }
+    applyQrMask(m, mask);                            // XOR zurueck
+  }
+  applyQrMask(m, bestMask);
+  m.drawFormat(bestMask);
+  return { size: m.size, mods: m.mods, version: ver, mask: bestMask };
+}
+
+/* SVG statt Canvas: skaliert scharf und passt zum Rest der App */
+function qrSvg(qr, rand) {
+  const q = rand === undefined ? 4 : rand;
+  const dim = qr.size + q * 2;
+  let d = '';
+  for (let y = 0; y < qr.size; y++) for (let x = 0; x < qr.size; x++) {
+    if (qr.mods[y][x]) d += 'M' + (x + q) + ',' + (y + q) + 'h1v1h-1z';
+  }
+  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + dim + ' ' + dim + '" ' +
+    'width="100%" style="max-width:320px; height:auto; display:block; margin:0 auto;" ' +
+    'role="img" aria-label="QR-Code zum geteilten Link">' +
+    '<rect width="' + dim + '" height="' + dim + '" fill="#ffffff"/>' +
+    '<path d="' + d + '" fill="#000000"/></svg>';
+}
+
+/* ---------- spec/07 §3.3 — was pro Song mitgeht ----------
+   Persoenliches (notiz, bewertung, favorit) bleibt bewusst hier. */
+const SHARE_SONG_FELDER = ['interpret', 'alternativTitel', 'sprache', 'quelleUrl', 'quelleNotiz',
+  'medienUrl', 'tonartOriginal', 'tonartWir', 'kapo', 'bpm', 'taktart', 'dauerSek', 'ccli',
+  'autoscrollTempo'];
+
+function buildSharePayload(setlistId, mitText) {
+  const sl = DATA.setlists.find(s => s.id === setlistId);
+  if (!sl) return null;
+
+  const songs = [];
+  const benutzteTags = new Set();
+  const eintraege = [];
+
+  sl.eintraege.forEach(e => {
+    const s = DATA.songs.find(x => x.id === e.songId);
+    if (!s) return;                                   // geloeschte Songs stillschweigend auslassen
+    eintraege.push({ songId: s.id, tonartAbweichend: e.tonartAbweichend ?? null, notiz: e.notiz || '' });
+    if (songs.some(k => k.id === s.id)) return;
+    const kopie = { id: s.id, titel: s.titel, tagIds: (s.tagIds || []).slice() };
+    SHARE_SONG_FELDER.forEach(f => {
+      if (!istLeer(s[f]) && s[f] !== 0) kopie[f] = s[f];
+    });
+    if (mitText && s.body) kopie.body = s.body;
+    (s.tagIds || []).forEach(id => benutzteTags.add(id));
+    songs.push(kopie);
+  });
+
+  return {
+    app: 'song-app-share', v: 1, mitText: !!mitText,
+    daten: {
+      tags: DATA.tags.filter(t => benutzteTags.has(t.id)),
+      songs,
+      setlists: [{ id: sl.id, name: sl.name, anlass: sl.anlass || '', datum: sl.datum || '',
+                   notiz: sl.notiz || '', eintraege }]
+    }
+  };
+}
+
+/* ---------- spec/07 §4 — Teilen-Dialog ---------- */
+
+let shareSetlistId = null;
+let shareToken = 0;
+
+function openShareDialog(id) {
+  const sl = DATA.setlists.find(s => s.id === id);
+  if (!sl) return;
+  shareSetlistId = id;
+  $('sh_mitText').checked = false;
+  $('sh_textHint').hidden = true;
+  $('sh_fileHint').hidden = location.protocol !== 'file:';
+  $('sh_shareBtn').hidden = typeof navigator.share !== 'function';
+  $('sh_copyBtn').textContent = '📋 Kopieren';
+  $('sh_meta').textContent = sl.name + ' · ' + sl.eintraege.length + ' Songs';
+  $('shareDialog').showModal();
+  refreshShareLink();
+}
+
+async function refreshShareLink() {
+  const lauf = ++shareToken;
+  const mitText = $('sh_mitText').checked;
+  $('sh_textHint').hidden = !mitText;
+  $('sh_link').value = 'wird erzeugt…';
+  $('sh_len').textContent = '';
+  $('sh_qr').innerHTML = '';
+  $('sh_qrHint').hidden = true;
+
+  const payload = buildSharePayload(shareSetlistId, mitText);
+  if (!payload) { $('sh_link').value = ''; return; }
+  const url = location.href.split('#')[0] + '#s=' + await packShare(payload);
+  if (lauf !== shareToken) return;                    // zwischenzeitlich umgeschaltet
+
+  $('sh_link').value = url;
+  $('sh_len').textContent = url.length + ' Zeichen' + (url.length > 8000
+    ? ' — manche Messenger kürzen sehr lange Links. Im Zweifel als Datei exportieren.' : '');
+
+  const qr = qrEncode(url);
+  if (qr) $('sh_qr').innerHTML = qrSvg(qr);
+  else $('sh_qrHint').hidden = false;
+}
+
+async function copyShareLink() {
+  const feld = $('sh_link');
+  if (!feld.value) return;
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(feld.value);
+      ok = true;
+    }
+  } catch (e) { ok = false; }
+  if (!ok) {
+    feld.removeAttribute('readonly');
+    feld.select();
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    feld.setAttribute('readonly', '');
+  }
+  $('sh_copyBtn').textContent = ok ? '✓ Kopiert' : 'Bitte von Hand markieren';
+  setTimeout(() => { $('sh_copyBtn').textContent = '📋 Kopieren'; }, 2500);
+}
+
+$('sd_shareBtn').addEventListener('click', () => { if (currentSetlistId) openShareDialog(currentSetlistId); });
+$('sh_mitText').addEventListener('change', refreshShareLink);
+$('sh_copyBtn').addEventListener('click', copyShareLink);
+$('sh_link').addEventListener('focus', (e) => e.target.select());
+$('sh_shareBtn').addEventListener('click', async () => {
+  const sl = DATA.setlists.find(s => s.id === shareSetlistId);
+  if (!sl || !$('sh_link').value) return;
+  try { await navigator.share({ title: 'Setlist: ' + sl.name, url: $('sh_link').value }); }
+  catch (e) { /* Abbruch durch den Nutzer ist kein Fehler */ }
+});
+$('sh_closeBtn').addEventListener('click', () => { shareSetlistId = null; $('shareDialog').close(); });
+
+/* ---------- spec/07 §6 — geteilten Link empfangen ---------- */
+
+let pendingShare = null;
+
+function shareLinkFehler() {
+  alert('Der geteilte Link ist beschädigt oder stammt aus einer anderen App.');
+}
+
+async function checkShareLink() {
+  const treffer = /^#s=(.+)$/.exec(location.hash || '');
+  if (!treffer) return;
+
+  // Fragment sofort entfernen, damit ein Neuladen den Import nicht erneut anbietet
+  try { history.replaceState(null, '', location.pathname + location.search); }
+  catch (e) { location.hash = ''; }
+
+  let payload;
+  try { payload = await unpackShare(treffer[1]); }
+  catch (e) { shareLinkFehler(); return; }
+  if (!payload || payload.app !== 'song-app-share' || !payload.daten) { shareLinkFehler(); return; }
+
+  const d = payload.daten;
+  if (!Array.isArray(d.songs) || !Array.isArray(d.setlists)) { shareLinkFehler(); return; }
+
+  pendingShare = {
+    tags: (d.tags || []).map(normalizeTag),
+    songs: d.songs.map(s => ({ ...defaultSong(), ...s, tagIds: Array.isArray(s.tagIds) ? s.tagIds : [] })),
+    setlists: d.setlists.map(normalizeSetlist)
+  };
+
+  const namen = pendingShare.songs.slice(0, 12)
+    .map(s => '<li>' + esc(s.titel || '(ohne Titel)') + '</li>').join('');
+  const rest = pendingShare.songs.length - 12;
+  $('si_preview').innerHTML =
+    '<strong>' + esc(pendingShare.setlists[0] ? pendingShare.setlists[0].name : 'Setlist') + '</strong><br>' +
+    pendingShare.songs.length + ' Songs · ' + pendingShare.tags.length + ' Tags · ' +
+    (payload.mitText ? 'mit Songtexten' : 'ohne Songtexte') +
+    '<ul>' + namen + (rest > 0 ? '<li>und ' + rest + ' weitere</li>' : '') + '</ul>';
+  $('shareImportDialog').showModal();
+}
+
+$('si_cancelBtn').addEventListener('click', () => { pendingShare = null; $('shareImportDialog').close(); });
+$('si_confirmBtn').addEventListener('click', () => {
+  if (!pendingShare) return;
+  const b = mergeImport(pendingShare);
+  pendingShare = null;
+  $('shareImportDialog').close();
+  alert('Übernommen:\n' + berichtText(b));
+});
+
+/* ============================================================
    Init
    ============================================================ */
 autoPurgeTrash();
 render();
+checkShareLink();
 </script>
 </body>
 </html>
