@@ -6,6 +6,13 @@
 <meta name="color-scheme" content="light dark">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
+<!-- spec/13 §1 — Startbildschirm-Modus (iOS/Android). Ohne apple-touch-icon nimmt iOS einen
+     Screenshot als Symbol; ohne app-title den <title>. status-bar-style bleibt bewusst "default",
+     sonst legt iOS den Inhalt UNTER die Statusleiste und die obersten Knöpfe sind nicht tippbar. -->
+<meta name="apple-mobile-web-app-title" content="Song-App">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAD8ElEQVR42u3byU4UURiG4Sri/XgBiqIyuHWBgMIVuFNRUcagOCUmTleAijK5dSGz3pcLIzFKE7qp4T/VzxsWBKHq9Dlffe+p6jY/O/EuA46ixxRAONA2Z/I8NwvQHBAO0Ao0B4QDtALNgUY0R5ZpDrTUikkArYBWQCugFdAKaAWaA/YcoBXQCkAroBXQCjQH7DlAK6AVaA7Yc4BWAFoBrYBWQCugFcTQiuaok4P3E0f+vPfWsuZA6D0HorQFrXQd++/GO/irCOuiOUJEgVZEwd1Ko9l7e7OaE9GKKNCKKNBKWuy+uRF5eLQiDdG1kjc0CmOJv4IAzdEMq+y8HmtYuCOsi/dWYEOaXnPUvy6aA8IBWqEVzYFKmsMHjMN2RwStWIaYWrEhBa3gb/pvrx1+//3VMK10NQN31tpVRoR18XmO0qNAK90chfVyjEArqTF4d72a/qeVJNPgbqVro7ARpt5ppVaGJjcClnkoreRdE4XNgFdn6ObovkCAVoJpglaUc6NG7o030IqR0wqt0Aoq0kqTmyPdV+cDxrAhtSG1IbWtsyEFrdAKrdCKkdMKaIVWaIVWaAU1a8XjcyPXHBAO0AqtaA4IB2iFVmgFzWgOT0iN/BitNDoadby6rwtXW/3TtblvkUf+f3Og3EC0+rWTB4VWUi3nrwtD5eSJVhLXyub8UKIjp5UkY0EraWtlc37Q3QqtHMHG3GCiI28XD8FwXHN4fN4G67MDiY5cc8CGtKZt3fpsf+pbaRvSWNu6dEce9znH2kzLy3R48bvO7zqtrM1caTc3w4tbwcuZVk7L6vSVMvJEK8nfrXScjIq5/nirmrNUc6LoWlmdvtz4ck53zD15ntX1VX4yih/zyJPtUgc88mS7xhX556u25vjy6FJXXYUpDtgT0g4u7p3kjpySVqqqjbLGP7pU/CqOLu3EEUrNWkm9pUeXdrMs+/ywr6hDBVyIGrRSyIQG4c+61nmE5j8ES/dR0tjT3SzLVqb6OvvDyPNPK0VFZO/w+5Wpiyf5tfgz7wPG5QYlaWgFrWevlph/enCh7FPceLZvddO7W0EyzVHXFfbxfm95B7/5/MDSag40MRzlXdxqozCt1DuVH+6dL/aA4y9+WNTCbmXrPf3vtSwkImJRfHOMvwhRwsuTp8rHxEvJKCUcgaZ1efJc+7H4aRWbqZVjVvqYoAhERc1hohHuVhbCgZT3HLk3LqE5IBygFWgOCAdoBZoDDWmOpv+/FZxKKyYBtAJaAa2AVkAroBVoDthzgFZAK4DmgD0HaAW0AloBrYBWoDlgzwFaAWgFtAJaAa2AVhBDK5oDmgPCAVqB5oBwgFagOaA50Gx+AYHBl/ab0KTaAAAAAElFTkSuQmCC">
+<link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAD8ElEQVR42u3byU4UURiG4Sri/XgBiqIyuHWBgMIVuFNRUcagOCUmTleAijK5dSGz3pcLIzFKE7qp4T/VzxsWBKHq9Dlffe+p6jY/O/EuA46ixxRAONA2Z/I8NwvQHBAO0Ao0B4QDtALNgUY0R5ZpDrTUikkArYBWQCugFdAKaAWaA/YcoBXQCkAroBXQCjQH7DlAK6AVaA7Yc4BWAFoBrYBWQCugFcTQiuaok4P3E0f+vPfWsuZA6D0HorQFrXQd++/GO/irCOuiOUJEgVZEwd1Ko9l7e7OaE9GKKNCKKNBKWuy+uRF5eLQiDdG1kjc0CmOJv4IAzdEMq+y8HmtYuCOsi/dWYEOaXnPUvy6aA8IBWqEVzYFKmsMHjMN2RwStWIaYWrEhBa3gb/pvrx1+//3VMK10NQN31tpVRoR18XmO0qNAK90chfVyjEArqTF4d72a/qeVJNPgbqVro7ARpt5ppVaGJjcClnkoreRdE4XNgFdn6ObovkCAVoJpglaUc6NG7o030IqR0wqt0Aoq0kqTmyPdV+cDxrAhtSG1IbWtsyEFrdAKrdCKkdMKaIVWaIVWaAU1a8XjcyPXHBAO0AqtaA4IB2iFVmgFzWgOT0iN/BitNDoadby6rwtXW/3TtblvkUf+f3Og3EC0+rWTB4VWUi3nrwtD5eSJVhLXyub8UKIjp5UkY0EraWtlc37Q3QqtHMHG3GCiI28XD8FwXHN4fN4G67MDiY5cc8CGtKZt3fpsf+pbaRvSWNu6dEce9znH2kzLy3R48bvO7zqtrM1caTc3w4tbwcuZVk7L6vSVMvJEK8nfrXScjIq5/nirmrNUc6LoWlmdvtz4ck53zD15ntX1VX4yih/zyJPtUgc88mS7xhX556u25vjy6FJXXYUpDtgT0g4u7p3kjpySVqqqjbLGP7pU/CqOLu3EEUrNWkm9pUeXdrMs+/ywr6hDBVyIGrRSyIQG4c+61nmE5j8ES/dR0tjT3SzLVqb6OvvDyPNPK0VFZO/w+5Wpiyf5tfgz7wPG5QYlaWgFrWevlph/enCh7FPceLZvddO7W0EyzVHXFfbxfm95B7/5/MDSag40MRzlXdxqozCt1DuVH+6dL/aA4y9+WNTCbmXrPf3vtSwkImJRfHOMvwhRwsuTp8rHxEvJKCUcgaZ1efJc+7H4aRWbqZVjVvqYoAhERc1hohHuVhbCgZT3HLk3LqE5IBygFWgOCAdoBZoDDWmOpv+/FZxKKyYBtAJaAa2AVkAroBVoDthzgFZAK4DmgD0HaAW0AloBrYBWoDlgzwFaAWgFtAJaAa2AVhBDK5oDmgPCAVqB5oBwgFagOaA50Gx+AYHBl/ab0KTaAAAAAElFTkSuQmCC">
 <meta name="theme-color" content="#20242c">
 <title>Song-App</title>
 <style>
@@ -54,6 +61,11 @@
   --star: #c8862a;
 }
 * { box-sizing: border-box; }
+/* spec/13 §1 — kein blauer Aufblitz-Rahmen beim Tippen unter iOS/Android */
+* { -webkit-tap-highlight-color: transparent; }
+/* spec/13 §4 — hidden muss jedes display schlagen. Ohne diese Regel bleiben Elemente mit
+   display:flex/grid trotz hidden sichtbar (betraf #activeFilters und #installHint). */
+[hidden] { display: none !important; }
 body {
   margin: 0;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -79,6 +91,28 @@ header {
   padding: .65rem 1rem;
   display: flex; align-items: center; gap: .5rem;
 }
+/* spec/13 §2 — "Groß": der ganze Kopf traegt das Bild, die Aktionszeile liegt darauf.
+   Dadurch sieht man vom Motiv mehr als einen Randstreifen. */
+header.gross {
+  background: var(--hdr-bg, linear-gradient(135deg,#2f5d94 0%,#4c7dbb 50%,#6d9bd6 100%));
+  background-size: cover; background-position: center;
+}
+header.gross .header-brand { background: none; min-height: 148px; align-items: flex-end; padding: 1rem; }
+header.gross .header-brand h1 { font-size: 1.6rem; }
+header.gross .brand-actions { position: absolute; top: .6rem; right: .6rem; }
+header.gross .header-actions { background: none; padding-top: .2rem; }
+/* Knoepfe und Suchfeld heben sich per abgedunkeltem Glas vom Motiv ab, ohne es zu verdecken.
+   Ausgenommen ist "Schlicht" (.plain) — dort gibt es kein Motiv, das sich abheben muesste. */
+header.gross:not(.plain) .header-actions button,
+header.gross:not(.plain) .header-actions input[type=search] {
+  background: rgba(12,15,22,.5); color: #fff; border-color: rgba(255,255,255,.4);
+  -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+}
+header.gross:not(.plain) .header-actions input[type=search]::placeholder { color: rgba(255,255,255,.75); }
+header.gross:not(.plain) .header-actions button.primary,
+header.gross:not(.plain) #btnFilter.active {
+  background: var(--accent); border-color: rgba(255,255,255,.55);
+}
 .header-brand h1 {
   margin: 0; flex: 1 1 auto; min-width: 0;
   font-size: 1.25rem; font-weight: 800; letter-spacing: -.2px;
@@ -89,16 +123,17 @@ header {
 .brand-actions { display: flex; gap: .4rem; flex: 0 0 auto; }
 .icon-btn {
   position: relative;
-  width: 40px; height: 40px; min-width: 40px; min-height: 40px;
+  /* spec/13 §1 — 44 px ist Apples Mindestmass fuer sicher treffbare Tap-Ziele */
+  width: 44px; height: 44px; min-width: 44px; min-height: 44px;
   padding: 0; border: none; border-radius: 50%;
   background: rgba(255,255,255,.26);
   color: var(--hdr-text, #ffffff); font-size: 1.05rem;
   display: flex; align-items: center; justify-content: center;
 }
 /* Preset "Schlicht": kein Verlauf, deshalb auch kein Schlagschatten und sichtbare Knopfraender */
-.header-brand.plain h1 { text-shadow: none; }
-.header-brand.plain { border-bottom: 1px solid var(--border); }
-.header-brand.plain .icon-btn { background: none; border: 1px solid var(--border); }
+header.plain .header-brand h1 { text-shadow: none; }
+header.plain .header-brand { border-bottom: 1px solid var(--border); }
+header.plain .icon-btn { background: none; border: 1px solid var(--border); }
 .header-actions {
   display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
   padding: .55rem 1rem; background: var(--surface);
@@ -174,7 +209,8 @@ textarea.mono { font-family: ui-monospace, "Courier New", monospace; }
   z-index: 41; width: min(640px, 100vw); max-width: 100vw;
   background: var(--surface); border-bottom: 1px solid var(--border);
   padding: 1rem; padding-top: calc(env(safe-area-inset-top) + 1rem);
-  max-height: 85vh; overflow-y: auto;
+  /* spec/13 §1 — dvh statt vh, sonst reicht das Panel am Handy hinter die Browserleiste */
+  max-height: 85vh; max-height: 85dvh; overflow-y: auto;
 }
 .filter-block { margin-bottom: 1rem; }
 .filter-block:last-child { margin-bottom: 0; }
@@ -207,6 +243,17 @@ textarea.mono { font-family: ui-monospace, "Courier New", monospace; }
 .settings-row .settings-row-icon { flex: 0 0 auto; font-size: 1.1rem; }
 .settings-row .settings-row-label { flex: 1 1 auto; }
 .settings-backup { font-size: .82rem; color: var(--text-muted); margin: .3rem 0; }
+/* spec/13 §3 — Beschriftung ueber einem Eingabefeld in den Einstellungen */
+.settings-label { display: block; font-size: .82rem; color: var(--text-muted); margin: .2rem 0 .3rem; }
+/* spec/13 §1 — einmaliger Hinweis auf "Zum Startbildschirm", nur ausserhalb des App-Modus */
+#installHint {
+  display: flex; align-items: flex-start; gap: .6rem;
+  margin: .75rem 1rem 0; padding: .6rem .75rem;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  font-size: .85rem; color: var(--text-muted);
+}
+#installHint p { margin: 0; flex: 1 1 auto; }
+#installHint button { min-height: 32px; min-width: 32px; padding: .1rem .5rem; font-size: .85rem; }
 .settings-about { font-size: .82rem; color: var(--text-muted); }
 
 main { padding: 1rem; max-width: 900px; margin: 0 auto; }
@@ -269,7 +316,8 @@ details.menu .menu-items.menu-up { top: auto; bottom: 100%; }
 .no-results { color: var(--text-muted); text-align: center; }
 
 dialog {
-  border: none; border-radius: 12px; padding: 1rem; width: min(600px, 92vw); max-height: 90vh;
+  border: none; border-radius: 12px; padding: 1rem; width: min(600px, 92vw);
+  max-height: 90vh; max-height: 90dvh;   /* spec/13 §1 */
   overflow: auto; background: var(--surface); color: var(--text);
 }
 dialog::backdrop { background: rgba(0,0,0,.5); }
@@ -322,7 +370,9 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 
 /* spec/05 — Songtext-Feld auf Wunsch grossflaechig bearbeiten */
 #f_body.body-fullscreen {
-  position: fixed; inset: 0; z-index: 200; width: 100vw; height: 100vh;
+  /* spec/13 §1 — 100dvh statt 100vh: 100vh rechnet die ein-/ausfahrende Browserleiste am Handy
+     nicht mit, dadurch ragte der Bühnenmodus unten aus dem Bild. Erste Zeile ist der Fallback. */
+  position: fixed; inset: 0; z-index: 200; width: 100vw; height: 100vh; height: 100dvh;
   border-radius: 0; font-size: 16px; padding: 1rem;
 }
 
@@ -427,7 +477,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 
 <!-- spec/12 §3 — Kopfbereich zweigeteilt: Marken-Band (farbig/Bild) + Aktionszeile.
      Keine ID umbenannt, kein Handler geaendert — nur die Anordnung im DOM. -->
-<header>
+<header id="appHeader">
   <div class="header-brand" id="headerBrand">
     <h1 id="appTitle">Song-App</h1>
     <div class="brand-actions">
@@ -442,6 +492,12 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <button type="button" id="btnSetlists" title="Setlists">🎵 Setlists</button>
   </div>
 </header>
+
+<!-- spec/13 §1 — Hinweis auf den Startbildschirm-Modus, nur im Browser sichtbar -->
+<div id="installHint" hidden>
+  <p id="installHintText"></p>
+  <button type="button" id="installHintClose" aria-label="Hinweis ausblenden">✕</button>
+</div>
 
 <!-- spec/09 §4.1 — ersetzt #tagFilterIndicator + #reminderBanner -->
 <div id="activeFilters" hidden></div>
@@ -485,17 +541,31 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 
   <div class="settings-section">
     <h3>Darstellung</h3>
+
+    <!-- spec/13 §3 — Name der App frei wählbar -->
+    <label class="settings-label" for="f_appTitel">Name der App</label>
+    <input type="text" id="f_appTitel" maxlength="60" placeholder="Meine Songs">
+
     <div class="seg-group" id="themeSeg">
       <button type="button" data-theme-choice="hell">☀ Hell</button>
       <button type="button" data-theme-choice="dunkel">🌙 Dunkel</button>
       <button type="button" data-theme-choice="system">◐ System</button>
     </div>
 
+    <!-- spec/13 §2 — Höhe des Kopfbereichs, gilt für Farbe wie für Bild -->
+    <p class="settings-backup">Höhe des Kopfbereichs. „Groß" zeigt vom Bild deutlich mehr,
+      Suche und Knöpfe liegen dann darauf.</p>
+    <div class="seg-group" id="hdrHoeheSeg">
+      <button type="button" data-hoehe="kompakt">Kompakt · ca. 60 px</button>
+      <button type="button" data-hoehe="gross">Groß · ca. 200 px</button>
+    </div>
+
     <!-- spec/12 §3 — Kopfbereich individualisieren -->
     <p class="settings-backup">Farbe des Kopfbereichs.</p>
     <div class="hdr-swatches" id="hdrSwatches"></div>
     <p class="settings-backup">Eigenes Bild im Kopfbereich (optional). Es wird verkleinert und liegt
-      nur in diesem Browser. Ein Bild hat Vorrang vor der Farbe — zum Zurückschalten „Bild entfernen".</p>
+      nur in diesem Browser. Ein Bild hat Vorrang vor der Farbe — zum Zurückschalten „Bild entfernen".
+      Bei „Groß" wirkt ein Querformat-Motiv am besten.</p>
     <div id="hdrBildVorschau"></div>
     <button type="button" id="hdrBildWaehlen">📷 Bild wählen</button>
     <input type="file" id="hdrBildInput" accept="image/*" hidden>
@@ -960,7 +1030,9 @@ function defaultData() {
       schriftgroesse: 1.0, zuletztExport: null, aenderungenSeitExport: 0,
       /* spec/12 §3 — Kopfbereich. headerBild ist eine Data-URL oder null. Beides sind reine
          meta-Felder, deshalb ohne schemaVersion-Erhoehung und ohne Migration. */
-      headerStil: 'nachtblau', headerBild: null
+      headerStil: 'nachtblau', headerBild: null,
+      /* spec/13 §2/§1 — Kopfhoehe 'kompakt'|'gross', Startbildschirm-Hinweis einmalig */
+      headerHoehe: 'kompakt', installHinweisWeg: false
     },
     songs: [], setlists: [], historie: [], tags: [], papierkorb: []
   };
@@ -1519,7 +1591,7 @@ function renderSettingsBadge() {
 }
 
 function render() {
-  $('appTitle').textContent = DATA.meta.titel || 'Song-App';
+  $('appTitle').textContent = (DATA.meta.titel || '').trim() || 'Meine Songs';  /* spec/13 §3 */
   renderSettingsBadge();
   renderFilterUI();
   renderList();
@@ -2448,21 +2520,69 @@ function getHeaderPreset(id) {
   return HEADER_PRESETS.find(p => p.id === id) || HEADER_PRESETS[0];
 }
 
+/* spec/13 §2 — Kopfhoehe. 'gross' zieht Hintergrund und Glas-Optik ueber die ganze Kopfzeile. */
+function getHeaderHoehe() {
+  return DATA.meta.headerHoehe === 'gross' ? 'gross' : 'kompakt';
+}
+
+/* spec/13 §1 — Farbe der iOS-Statusleiste an den Kopf angleichen (seit iOS 15 wirksam).
+   Ein Verlauf laesst sich dort nicht setzen, also die erste Farbe des Verlaufs verwenden. */
+function ersteFarbe(css) {
+  const m = String(css).match(/#[0-9a-fA-F]{3,8}|rgba?\([^)]*\)/);
+  return m ? m[0] : null;
+}
+function applyThemeColor(preset, hatBild) {
+  const el = document.querySelector('meta[name="theme-color"]');
+  if (!el) return;
+  if (hatBild) { el.setAttribute('content', '#0c0f16'); return; }
+  const farbe = ersteFarbe(preset.bg);
+  if (farbe) el.setAttribute('content', farbe);
+}
+
 function applyHeaderStil() {
-  const el = $('headerBrand');
+  /* Die Variablen sitzen am <header>: bei "gross" nutzt er sie selbst als Hintergrund,
+     bei "kompakt" erbt sie das Marken-Band. Beides ohne zweiten Satz Variablen. */
+  const el = $('appHeader');
   const preset = getHeaderPreset(DATA.meta.headerStil);
   const bild = DATA.meta.headerBild || '';
+  el.classList.toggle('gross', getHeaderHoehe() === 'gross');
   if (bild) {
     /* Dunkler Verlauf ueber dem Foto, damit Titel und Zahnrad auf jedem Bild lesbar bleiben. */
     el.style.setProperty('--hdr-bg', 'linear-gradient(rgba(8,10,16,.45),rgba(8,10,16,.45)), url("' + bild + '")');
     el.style.setProperty('--hdr-text', '#ffffff');
     el.classList.remove('plain');
+    applyThemeColor(preset, true);
     return;
   }
   el.style.setProperty('--hdr-bg', preset.bg);
   el.style.setProperty('--hdr-text', preset.text);
   el.classList.toggle('plain', preset.id === 'schlicht');
+  applyThemeColor(preset, false);
 }
+
+function setHeaderHoehe(wert) {
+  DATA.meta.headerHoehe = (wert === 'gross') ? 'gross' : 'kompakt';
+  saveData(DATA);
+  syncHdrHoeheUI();
+  applyHeaderStil();
+}
+
+function syncHdrHoeheUI() {
+  const aktiv = getHeaderHoehe();
+  $('hdrHoeheSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.hoehe === aktiv));
+}
+
+$('hdrHoeheSeg').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-hoehe]');
+  if (btn) setHeaderHoehe(btn.dataset.hoehe);
+});
+
+/* spec/13 §3 — Name der App frei waehlbar. Leeres Feld faellt auf den Standardnamen zurueck. */
+$('f_appTitel').addEventListener('input', () => {
+  DATA.meta.titel = $('f_appTitel').value;
+  saveData(DATA);
+  $('appTitle').textContent = DATA.meta.titel.trim() || 'Meine Songs';
+});
 
 function renderHdrSwatches() {
   const aktiv = getHeaderPreset(DATA.meta.headerStil).id;
@@ -2561,6 +2681,37 @@ $('hdrBildInput').addEventListener('change', async (e) => {
   } catch (err) {
     alert('Bild konnte nicht verarbeitet werden.');
   }
+});
+
+/* ---------- spec/13 §1 — Startbildschirm-Modus ----------
+   Eine Website kann die Browserleiste NICHT selbst ausblenden — Vollbild ohne Nutzergeste ist in
+   allen Browsern gesperrt, und iOS/Safari kennt die Fullscreen-API fuer normale Elemente gar nicht.
+   Der einzige Weg zu einer Ansicht ohne Browserleiste ist "Zum Startbildschirm hinzufuegen":
+   dann startet die Seite dank apple-mobile-web-app-capable im eigenen Fenster. Deshalb hier kein
+   Automatismus, sondern ein einmaliger Hinweis, wie das geht. */
+
+function istStartbildschirmModus() {
+  if (window.navigator && window.navigator.standalone === true) return true;   // iOS
+  try { return window.matchMedia('(display-mode: standalone)').matches; }      // Android/Desktop
+  catch (e) { return false; }
+}
+
+function renderInstallHinweis() {
+  const box = $('installHint');
+  if (istStartbildschirmModus() || DATA.meta.installHinweisWeg) { box.hidden = true; return; }
+  const ua = navigator.userAgent || '';
+  const istIOS = /iPad|iPhone|iPod/.test(ua) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);   // iPadOS meldet sich als Mac
+  $('installHintText').textContent = istIOS
+    ? 'Tipp: Teilen-Symbol → „Zum Home-Bildschirm" legt die App als Symbol ab. Sie startet dann ohne Browserleiste. Achtung: der Startbildschirm-Modus hat unter iOS einen eigenen Speicher — vorher exportieren und dort wieder importieren.'
+    : 'Tipp: Über das Browser-Menü lässt sich die App zum Startbildschirm hinzufügen. Sie startet dann ohne Browserleiste.';
+  box.hidden = false;
+}
+
+$('installHintClose').addEventListener('click', () => {
+  DATA.meta.installHinweisWeg = true;
+  saveData(DATA);
+  $('installHint').hidden = true;
 });
 
 $('hdrBildEntfernen').addEventListener('click', () => {
@@ -2690,6 +2841,8 @@ function renderSettingsPanelContent() {
   $('btnTrashLabel').textContent = 'Papierkorb' + (DATA.papierkorb.length ? ' (' + DATA.papierkorb.length + ')' : '');
   $('settingsAboutLine').textContent = 'Song-App · Schema v' + DATA.schemaVersion;
   syncThemeUI();
+  $('f_appTitel').value = DATA.meta.titel || '';   /* spec/13 §3 */
+  syncHdrHoeheUI();      /* spec/13 §2 */
   renderHdrSwatches();   /* spec/12 §3 */
   renderHdrBildUI();     /* spec/12 §3 */
 }
@@ -4228,7 +4381,8 @@ $('si_confirmBtn').addEventListener('click', () => {
    Init
    ============================================================ */
 autoPurgeTrash();
-applyHeaderStil();   /* spec/12 §3 — vor dem ersten render(), damit der Kopf nicht aufblitzt */
+applyHeaderStil();       /* spec/12 §3 — vor dem ersten render(), damit der Kopf nicht aufblitzt */
+renderInstallHinweis();  /* spec/13 §1 */
 render();
 checkShareLink();
 </script>
