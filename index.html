@@ -268,14 +268,17 @@ textarea.mono { font-family: ui-monospace, "Courier New", monospace; }
 }
 .settings-check input { width: auto; min-width: 20px; height: 20px; margin: 0; }
 /* spec/13 §1 — einmaliger Hinweis auf "Zum Startbildschirm", nur ausserhalb des App-Modus */
-#installHint {
+/* spec/16 §4 — #updateHint teilt sich die Optik mit #installHint */
+#installHint, #updateHint {
   display: flex; align-items: flex-start; gap: .6rem;
   margin: .75rem 1rem 0; padding: .6rem .75rem;
   background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
   font-size: .85rem; color: var(--text-muted);
 }
-#installHint p { margin: 0; flex: 1 1 auto; }
-#installHint button { min-height: 32px; min-width: 32px; padding: .1rem .5rem; font-size: .85rem; }
+#installHint p, #updateHint p { margin: 0; flex: 1 1 auto; }
+#installHint button, #updateHint button { min-height: 32px; min-width: 32px; padding: .1rem .5rem; font-size: .85rem; }
+#updateHint { align-items: center; }
+#updateHint #updateHintReload { flex: 0 0 auto; }
 .settings-about { font-size: .82rem; color: var(--text-muted); }
 
 main { padding: 1rem; max-width: 900px; margin: 0 auto; }
@@ -521,6 +524,13 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <button type="button" id="installHintClose" aria-label="Hinweis ausblenden">✕</button>
 </div>
 
+<!-- spec/16 §4 — Meldung, wenn eine neue Fassung im Hintergrund geladen wurde -->
+<div id="updateHint" hidden>
+  <p>Neue Version geladen — App neu starten, um sie zu benutzen.</p>
+  <button type="button" id="updateHintReload" class="primary">Neu laden</button>
+  <button type="button" id="updateHintClose" aria-label="Hinweis ausblenden">✕</button>
+</div>
+
 <!-- spec/09 §4.1 — ersetzt #tagFilterIndicator + #reminderBanner -->
 <div id="activeFilters" hidden></div>
 
@@ -611,6 +621,15 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <h3>Verwalten</h3>
     <button type="button" class="settings-row" id="btnTags"><span class="settings-row-icon">🏷</span><span class="settings-row-label">Tags verwalten</span></button>
     <button type="button" class="settings-row" id="btnTrash"><span class="settings-row-icon">🗑</span><span class="settings-row-label" id="btnTrashLabel">Papierkorb</span></button>
+  </div>
+
+  <!-- spec/16 §5 — Offline-Bereitschaft: Status und Notausgang -->
+  <div class="settings-section">
+    <h3>Offline</h3>
+    <p class="settings-about" id="offlineStatus"></p>
+    <button type="button" id="btnOfflineReset">Offline-Speicher zurücksetzen</button>
+    <p class="settings-backup">Hilft, falls die App nach einem Update hakt. Songs, Setlists und
+      Einstellungen bleiben dabei erhalten.</p>
   </div>
 
   <div class="settings-section">
@@ -987,6 +1006,11 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
    Song-App — spec/01 Grundgerüst
    Reihenfolge: Datenmodell/Helper -> Render -> Event-Handler -> Init
    ============================================================ */
+
+/* spec/16 §2 — EINZIGE Quelle der App-Version.
+   Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
+   ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
+const APP_VERSION = '1.0.0';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -2906,7 +2930,10 @@ function renderSettingsPanelContent() {
     ? 'Noch nie exportiert.'
     : 'Letzter Export: vor ' + days + (days === 1 ? ' Tag' : ' Tagen') + ' · ' + (DATA.meta.aenderungenSeitExport || 0) + ' Änderungen seither';
   $('btnTrashLabel').textContent = 'Papierkorb' + (DATA.papierkorb.length ? ' (' + DATA.papierkorb.length + ')' : '');
-  $('settingsAboutLine').textContent = 'Song-App · Schema v' + DATA.schemaVersion;
+  /* spec/16 §5 — Version gehört sichtbar in die Über-Zeile, sonst ist nach einem Update
+     nicht feststellbar, welche Fassung gerade läuft. */
+  $('settingsAboutLine').textContent = 'Song-App v' + APP_VERSION + ' · Schema v' + DATA.schemaVersion;
+  renderOfflineStatus();   /* spec/16 §5 */
   syncThemeUI();
   $('f_appTitel').value = DATA.meta.titel || '';   /* spec/13 §3 */
   $('f_titelZeigen').checked = titelZeigen();      /* spec/14 §1 */
@@ -4446,6 +4473,140 @@ $('si_confirmBtn').addEventListener('click', () => {
 });
 
 /* ============================================================
+   spec/16 — Offline-Bereitschaft (Service Worker)
+
+   Grundregel dieser Stufe: KEIN Codepfad der App darf vom Service Worker abhängen.
+   Alles hier steht in try/catch, und schlägt etwas fehl, läuft die App unverändert
+   weiter — sie muss dann zum Starten nur Netz haben.
+   ============================================================ */
+
+/* Merker für die Statuszeile in den Einstellungen. Kein gespeicherter Zustand. */
+let swZustand = 'unbekannt';   /* unbekannt | nicht_moeglich | einrichtung | aktiv */
+
+/* spec/16 §5 — Statuszeile in den Einstellungen, in einem Satz und ohne Fachbegriffe */
+function renderOfflineStatus() {
+  const el = $('offlineStatus');
+  if (!el) return;
+  const txt = {
+    aktiv: 'Offline-Bereitschaft aktiv. Die App startet auch ohne Netz.',
+    einrichtung: 'Wird eingerichtet …',
+    nicht_moeglich: 'Offline-Bereitschaft nicht verfügbar. Die App läuft trotzdem — sie muss zum Starten nur Netz haben.',
+    unbekannt: 'Wird eingerichtet …'
+  };
+  el.textContent = txt[swZustand] || txt.unbekannt;
+  const btn = $('btnOfflineReset');
+  if (btn) btn.disabled = (swZustand === 'nicht_moeglich');
+}
+
+/* spec/16 §4 — Meldung, dass eine neue Fassung bereitliegt.
+
+   Ausgelöst wird sie durch einen Versionsvergleich gegen den Server, NICHT durch den
+   Lebenszyklus des Service Workers. Grund: die App startet aus dem Cache und führt
+   damit die alte Fassung samt alter APP_VERSION aus — sie würde eine neue Fassung über
+   den Worker-Lebenszyklus nie zu sehen bekommen. Siehe spec/16 §4. */
+let updateHinweisGezeigt = false;
+function zeigeUpdateHinweis() {
+  if (updateHinweisGezeigt) return;
+  updateHinweisGezeigt = true;
+  const box = $('updateHint');
+  if (box) box.hidden = false;
+}
+
+/* Holt die Startseite am Cache vorbei (?vcheck, siehe sw.js) und vergleicht die Version.
+   Ohne Netz schlägt das still fehl — das ist der Normalfall am Lagerfeuer, kein Fehler. */
+async function pruefeAufNeueFassung() {
+  try {
+    const res = await fetch('index.html?vcheck=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) return;
+    const txt = await res.text();
+    const m = txt.match(/const APP_VERSION = '([^']+)'/);
+    if (m && m[1] !== APP_VERSION) zeigeUpdateHinweis();
+  } catch (e) { /* kein Netz — nichts zu melden */ }
+}
+
+/* „Neu laden" holt die neue Fassung vorher ausdrücklich in den Cache. Sonst hinge es am
+   Zufall, ob die Hintergrund-Aktualisierung des Workers schon durch ist. */
+async function ladeNeueFassung() {
+  try {
+    const cache = await caches.open('song-app-v' + APP_VERSION);
+    const res = await fetch('index.html?vcheck=' + Date.now(), { cache: 'no-store' });
+    if (res.ok) {
+      await cache.put('./index.html', res.clone());
+      await cache.put('./', res.clone());
+    }
+  } catch (e) { /* dann eben über den normalen Weg */ }
+  location.reload();
+}
+
+$('updateHintClose').addEventListener('click', () => { $('updateHint').hidden = true; });
+$('updateHintReload').addEventListener('click', ladeNeueFassung);
+
+/* spec/16 §5 — Notausgang.
+   Entfernt Service Worker und alle Caches. Fasst localStorage NICHT an:
+   Songs, Setlists, Historie und Einstellungen überleben das unverändert. */
+async function offlineSpeicherZuruecksetzen() {
+  const ok = confirm(
+    'Offline-Speicher zurücksetzen?\n\n' +
+    'Die App holt sich danach alles neu vom Netz.\n\n' +
+    'Deine Songs, Setlists und Einstellungen bleiben erhalten — die werden dabei nicht angefasst.'
+  );
+  if (!ok) return;
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if (window.caches) {
+      const namen = await caches.keys();
+      await Promise.all(namen.map(n => caches.delete(n)));
+    }
+  } catch (e) {
+    alert('Zurücksetzen fehlgeschlagen: ' + e.message + '\n\nDeine Songs sind unverändert.');
+    return;
+  }
+  location.reload();
+}
+$('btnOfflineReset').addEventListener('click', offlineSpeicherZuruecksetzen);
+
+/* spec/16 §1/§2 — defensive Registrierung.
+   Läuft die App über file:// (lokal doppelt angeklickt), kennt der Browser hier keinen
+   Service Worker. Das ist kein Fehler: still weiterlaufen, Statuszeile sagt Bescheid. */
+function registriereServiceWorker() {
+  try {
+    if (!('serviceWorker' in navigator) || location.protocol === 'file:') {
+      swZustand = 'nicht_moeglich';
+      renderOfflineStatus();
+      return;
+    }
+    swZustand = navigator.serviceWorker.controller ? 'aktiv' : 'einrichtung';
+
+    /* Ein Wechsel des steuernden Workers heißt: die Offline-Bereitschaft steht.
+       Die Update-Meldung hängt bewusst NICHT hier dran (siehe pruefeAufNeueFassung). */
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      swZustand = 'aktiv';
+      renderOfflineStatus();
+    });
+
+    navigator.serviceWorker.register('sw.js?v=' + APP_VERSION).then((reg) => {
+      swZustand = navigator.serviceWorker.controller ? 'aktiv' : 'einrichtung';
+      renderOfflineStatus();
+      if (reg.installing) {
+        reg.installing.addEventListener('statechange', function () {
+          if (this.state === 'activated') { swZustand = 'aktiv'; renderOfflineStatus(); }
+        });
+      }
+      pruefeAufNeueFassung();   /* spec/16 §4 */
+    }).catch(() => {
+      swZustand = 'nicht_moeglich';
+      renderOfflineStatus();
+    });
+  } catch (e) {
+    swZustand = 'nicht_moeglich';
+    renderOfflineStatus();
+  }
+}
+
+/* ============================================================
    Init
    ============================================================ */
 autoPurgeTrash();
@@ -4453,6 +4614,7 @@ applyHeaderStil();       /* spec/12 §3 — vor dem ersten render(), damit der K
 renderInstallHinweis();  /* spec/13 §1 */
 render();
 checkShareLink();
+registriereServiceWorker();   /* spec/16 §1 — zuletzt, damit nichts davon abhängt */
 </script>
 </body>
 </html>
