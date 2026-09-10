@@ -182,6 +182,8 @@ main { padding: 1rem; max-width: 900px; margin: 0 auto; }
 /* spec/06 §3 — dezenter Hinweis auf Kachel fuer lange nicht gespielte Songs */
 .card-stale-badge { color: var(--text-muted); font-size: .78rem; }
 #filterStaleToggle.active { background: var(--accent); color: #fff; }
+/* spec/12 §1 — Favoriten-Filter, gleiche Optik wie der Gespielt-Toggle */
+#filterFavToggle.active { background: var(--accent); color: #fff; }
 .historie-list { list-style: none; margin: 0; padding: 0; max-height: 160px; overflow-y: auto; }
 .historie-list li { display: flex; align-items: center; justify-content: space-between; padding: .2rem 0; font-size: .85rem; }
 .historie-list button { min-height: auto; padding: .1rem .5rem; }
@@ -401,6 +403,11 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       <button type="button" data-sort="zuletzt">Zuletzt gespielt</button>
       <button type="button" data-sort="laengsteNicht">Am längsten nicht gespielt</button>
     </div>
+  </div>
+  <!-- spec/12 §1 — Favoriten-Filter -->
+  <div class="filter-block">
+    <h3>Favoriten</h3>
+    <button type="button" id="filterFavToggle" title="Nur Songs zeigen, die als Favorit markiert sind">♥ Nur Favoriten</button>
   </div>
   <div class="filter-block">
     <h3>Gespielt</h3>
@@ -1282,6 +1289,7 @@ let searchTerm = '';
 let activeTagFilter = null;
 let sortMode = 'titel';       // spec/06 §3 — 'titel' | 'zuletzt' | 'laengsteNicht', reiner UI-State
 let staleFilterActive = false; // spec/06 §3 — Toggle "Lange nicht gespielt"
+let favoritFilterActive = false; // spec/12 §1 — Toggle "Nur Favoriten"
 /* seit spec/03 ohne Funktion: die Kachel-Vorschau ist durch den Bühnenmodus ersetzt */
 
 /* spec/06 §3 — juengstes Nutzungsdatum eines Songs, oder null wenn nie gespielt */
@@ -1338,6 +1346,10 @@ function getVisibleSongs() {
   }
   if (staleFilterActive) {
     list = list.filter(songIsStale);
+  }
+  /* spec/12 §1 — Favoriten-Filter */
+  if (favoritFilterActive) {
+    list = list.filter(s => !!s.favorit);
   }
   list = [...list];
   if (sortMode === 'zuletzt') {
@@ -2349,7 +2361,7 @@ $('themeSeg').addEventListener('click', (e) => {
 /* ---------- spec/09 §4 — Filter- & Sortier-Panel ---------- */
 
 function renderFilterButtonBadge() {
-  const n = (activeTagFilter ? 1 : 0) + (staleFilterActive ? 1 : 0);
+  const n = (activeTagFilter ? 1 : 0) + (staleFilterActive ? 1 : 0) + (favoritFilterActive ? 1 : 0);
   $('btnFilter').classList.toggle('active', n > 0);
   $('filterCount').textContent = n > 0 ? ' (' + n + ')' : '';
 }
@@ -2363,6 +2375,7 @@ function renderActiveFilters() {
     else activeTagFilter = null;
   }
   if (staleFilterActive) chips.push({ art: 'stale', label: '🕑 Lange nicht gespielt' });
+  if (favoritFilterActive) chips.push({ art: 'favorit', label: '♥ Nur Favoriten' }); /* spec/12 §1 */
 
   const el = $('activeFilters');
   if (chips.length === 0) { el.hidden = true; el.innerHTML = ''; return; }
@@ -2384,6 +2397,7 @@ $('activeFilters').addEventListener('click', (e) => {
     if (art === 'search') { searchTerm = ''; $('searchInput').value = ''; }
     else if (art === 'tag') activeTagFilter = null;
     else if (art === 'stale') { staleFilterActive = false; $('filterStaleToggle').classList.remove('active'); }
+    else if (art === 'favorit') { favoritFilterActive = false; $('filterFavToggle').classList.remove('active'); } /* spec/12 §1 */
     renderList(); renderFilterUI();
     return;
   }
@@ -2391,6 +2405,7 @@ $('activeFilters').addEventListener('click', (e) => {
     searchTerm = ''; $('searchInput').value = '';
     activeTagFilter = null;
     staleFilterActive = false; $('filterStaleToggle').classList.remove('active');
+    favoritFilterActive = false; $('filterFavToggle').classList.remove('active'); /* spec/12 §1 */
     renderList(); renderFilterUI();
   }
 });
@@ -2428,9 +2443,17 @@ $('filterStaleToggle').addEventListener('click', () => {
   renderList(); renderFilterUI();
 });
 
+/* spec/12 §1 — Favoriten-Filter */
+$('filterFavToggle').addEventListener('click', () => {
+  favoritFilterActive = !favoritFilterActive;
+  $('filterFavToggle').classList.toggle('active', favoritFilterActive);
+  renderList(); renderFilterUI();
+});
+
 function openFilterPanel() {
   $('sortSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sort === sortMode));
   $('filterStaleToggle').classList.toggle('active', staleFilterActive);
+  $('filterFavToggle').classList.toggle('active', favoritFilterActive); /* spec/12 §1 */
   renderFilterTagList();
   $('filterBackdrop').hidden = false;
   $('filterPanel').hidden = false;
