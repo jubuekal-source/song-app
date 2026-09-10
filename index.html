@@ -64,16 +64,60 @@ body {
   padding-right: env(safe-area-inset-right);
   padding-bottom: env(safe-area-inset-bottom);
 }
+/* spec/12 §3 — Kopfbereich: farbiges Band (Titel + Werkzeuge) ueber der Aktionszeile.
+   Der Hintergrund kommt aus --hdr-bg, gesetzt von applyHeaderStil() — Farb-Preset oder
+   eigenes Bild. Der Fallback im var() haelt den Kopf auch ohne JS ansehnlich. */
 header {
   position: sticky; top: 0; z-index: 10;
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: .75rem 1rem;
-  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,.12);
 }
-header h1 { font-size: 1.1rem; margin: 0; flex: 1 0 auto; }
-.header-actions { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; flex: 2 1 100%; }
+.header-brand {
+  position: relative; overflow: hidden;
+  background: var(--hdr-bg, linear-gradient(135deg,#2f5d94 0%,#4c7dbb 50%,#6d9bd6 100%));
+  background-size: cover; background-position: center;
+  padding: .65rem 1rem;
+  display: flex; align-items: center; gap: .5rem;
+}
+.header-brand h1 {
+  margin: 0; flex: 1 1 auto; min-width: 0;
+  font-size: 1.25rem; font-weight: 800; letter-spacing: -.2px;
+  color: var(--hdr-text, #ffffff);
+  text-shadow: 0 1px 3px rgba(0,0,0,.35);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.brand-actions { display: flex; gap: .4rem; flex: 0 0 auto; }
+.icon-btn {
+  position: relative;
+  width: 40px; height: 40px; min-width: 40px; min-height: 40px;
+  padding: 0; border: none; border-radius: 50%;
+  background: rgba(255,255,255,.26);
+  color: var(--hdr-text, #ffffff); font-size: 1.05rem;
+  display: flex; align-items: center; justify-content: center;
+}
+/* Preset "Schlicht": kein Verlauf, deshalb auch kein Schlagschatten und sichtbare Knopfraender */
+.header-brand.plain h1 { text-shadow: none; }
+.header-brand.plain { border-bottom: 1px solid var(--border); }
+.header-brand.plain .icon-btn { background: none; border: 1px solid var(--border); }
+.header-actions {
+  display: flex; flex-wrap: wrap; gap: .4rem; align-items: center;
+  padding: .55rem 1rem; background: var(--surface);
+}
 .header-actions input[type=search] { flex: 1 1 160px; min-width: 120px; }
+/* spec/12 §3 — am Handy die Suche auf eine eigene Zeile, damit die drei Knoepfe darunter
+   in EINE Zeile passen (sonst rutscht "Setlists" allein in eine dritte Zeile). */
+@media (max-width: 520px) {
+  .header-actions input[type=search] { flex: 1 1 100%; order: -1; }
+}
+/* spec/12 §3 — Farbauswahl fuer den Kopfbereich (Einstellungen) */
+.hdr-swatches { display: flex; gap: .5rem; flex-wrap: wrap; margin: .1rem 0 .4rem; }
+.hdr-swatch {
+  width: 34px; height: 34px; min-width: 34px; min-height: 34px;
+  padding: 0; border-radius: 50%; border: 3px solid transparent;
+}
+.hdr-swatch { background-clip: padding-box; }
+.hdr-swatch.active { border-color: var(--text); }
+#hdrBildVorschau img { display: block; width: 100%; border-radius: 8px; margin: .4rem 0; }
 button {
   min-height: 44px; min-width: 44px;
   border: 1px solid var(--border); border-radius: 8px;
@@ -299,6 +343,9 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 }
 /* spec/04 §3 — Akkordzeilen im Buehnenmodus farblich absetzen */
 #stageBody .chordline { color: #f0b429; font-weight: 600; }
+/* spec/12 §2 — Abschnittsmarken ([Chorus], "Strophe 2", "Bridge" …) klar absetzen.
+   Bewusst eine andere Farbfamilie als die Akkorde, damit beides nie verwechselt wird. */
+#stageBody .sectionline { color: #7fd6c2; font-weight: 700; letter-spacing: .05em; }
 .stage-bar {
   position: absolute; left: 0; right: 0; z-index: 2;
   display: flex; align-items: center; gap: .4rem; padding: .4rem .5rem;
@@ -378,15 +425,21 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 </head>
 <body>
 
+<!-- spec/12 §3 — Kopfbereich zweigeteilt: Marken-Band (farbig/Bild) + Aktionszeile.
+     Keine ID umbenannt, kein Handler geaendert — nur die Anordnung im DOM. -->
 <header>
-  <h1 id="appTitle">Song-App</h1>
+  <div class="header-brand" id="headerBrand">
+    <h1 id="appTitle">Song-App</h1>
+    <div class="brand-actions">
+      <button type="button" class="icon-btn" id="btnTheme" title="Theme wechseln" aria-label="Theme wechseln">◐</button>
+      <button type="button" class="icon-btn" id="btnSettings" title="Einstellungen" aria-label="Einstellungen">⚙<span id="settingsBadge" class="badge-dot" hidden></span></button>
+    </div>
+  </div>
   <div class="header-actions">
-    <button type="button" id="btnNewSong">+ Song</button>
+    <button type="button" id="btnNewSong" class="primary">+ Song</button>
     <input type="search" id="searchInput" placeholder="Suche…" aria-label="Songs durchsuchen">
     <button type="button" id="btnFilter" title="Filter &amp; Sortierung" aria-label="Filter und Sortierung">⚗ Filter<span id="filterCount"></span></button>
     <button type="button" id="btnSetlists" title="Setlists">🎵 Setlists</button>
-    <button type="button" id="btnTheme" title="Theme wechseln" aria-label="Theme wechseln">◐</button>
-    <button type="button" id="btnSettings" title="Einstellungen" aria-label="Einstellungen">⚙<span id="settingsBadge" class="badge-dot" hidden></span></button>
   </div>
 </header>
 
@@ -437,6 +490,16 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       <button type="button" data-theme-choice="dunkel">🌙 Dunkel</button>
       <button type="button" data-theme-choice="system">◐ System</button>
     </div>
+
+    <!-- spec/12 §3 — Kopfbereich individualisieren -->
+    <p class="settings-backup">Farbe des Kopfbereichs.</p>
+    <div class="hdr-swatches" id="hdrSwatches"></div>
+    <p class="settings-backup">Eigenes Bild im Kopfbereich (optional). Es wird verkleinert und liegt
+      nur in diesem Browser. Ein Bild hat Vorrang vor der Farbe — zum Zurückschalten „Bild entfernen".</p>
+    <div id="hdrBildVorschau"></div>
+    <button type="button" id="hdrBildWaehlen">📷 Bild wählen</button>
+    <input type="file" id="hdrBildInput" accept="image/*" hidden>
+    <button type="button" id="hdrBildEntfernen" hidden>Bild entfernen</button>
   </div>
 
   <div class="settings-section">
@@ -894,7 +957,10 @@ function defaultData() {
     schemaVersion: 1,
     meta: {
       titel: 'Meine Songs', besitzer: '', theme: 'system',
-      schriftgroesse: 1.0, zuletztExport: null, aenderungenSeitExport: 0
+      schriftgroesse: 1.0, zuletztExport: null, aenderungenSeitExport: 0,
+      /* spec/12 §3 — Kopfbereich. headerBild ist eine Data-URL oder null. Beides sind reine
+         meta-Felder, deshalb ohne schemaVersion-Erhoehung und ohne Migration. */
+      headerStil: 'nachtblau', headerBild: null
     },
     songs: [], setlists: [], historie: [], tags: [], papierkorb: []
   };
@@ -2358,6 +2424,152 @@ $('themeSeg').addEventListener('click', (e) => {
   if (btn) setTheme(btn.dataset.themeChoice);
 });
 
+/* ---------- spec/12 §3 — Kopfbereich individualisieren ----------
+   Vorbild ist die Loesung aus der Freizeit-App: ein Farb-Preset als Grundeinstellung, dazu
+   optional ein eigenes Bild. Ein gesetztes Bild hat Vorrang vor der Farbe; ein Farbwechsel
+   loescht das Bild bewusst NICHT (das waere ueberraschender Datenverlust) — nur "Bild
+   entfernen" raeumt auf. Beides liegt in DATA.meta, wandert also in den Export mit und
+   verlaesst das Geraet nie ueber einen Teilen-Link (buildSharePayload baut sein eigenes
+   Objekt ohne meta). */
+
+const HEADER_PRESETS = [
+  { id: 'nachtblau',  label: 'Nachtblau (Standard)', bg: 'linear-gradient(135deg,#2f5d94 0%,#4c7dbb 50%,#6d9bd6 100%)', text: '#ffffff' },
+  { id: 'lagerfeuer', label: 'Lagerfeuer',           bg: 'linear-gradient(135deg,#a8341c 0%,#e2703a 50%,#f0a35e 100%)', text: '#ffffff' },
+  { id: 'wald',       label: 'Wald',                 bg: 'linear-gradient(135deg,#1f5f4a 0%,#2f8f6b 55%,#5ec49a 100%)', text: '#ffffff' },
+  { id: 'abendrot',   label: 'Abendrot',             bg: 'linear-gradient(135deg,#5c2b6b 0%,#a8437a 50%,#e0736b 100%)', text: '#ffffff' },
+  { id: 'nacht',      label: 'Nacht',                bg: 'linear-gradient(135deg,#2b3040 0%,#1e2128 60%,#12141a 100%)', text: '#ffffff' },
+  /* "swatch" nur dort noetig, wo die Kopffarbe selbst zu unauffaellig fuer einen Farbpunkt waere:
+     var(--surface) waere im Dunkelmodus ein schwarzer Punkt auf schwarzem Grund. */
+  { id: 'schlicht',   label: 'Schlicht',             bg: 'var(--surface)',                                              text: 'var(--text)',
+    swatch: 'linear-gradient(135deg,var(--surface) 0%,var(--surface) 48%,var(--border) 52%,var(--border) 100%)' }
+];
+
+function getHeaderPreset(id) {
+  return HEADER_PRESETS.find(p => p.id === id) || HEADER_PRESETS[0];
+}
+
+function applyHeaderStil() {
+  const el = $('headerBrand');
+  const preset = getHeaderPreset(DATA.meta.headerStil);
+  const bild = DATA.meta.headerBild || '';
+  if (bild) {
+    /* Dunkler Verlauf ueber dem Foto, damit Titel und Zahnrad auf jedem Bild lesbar bleiben. */
+    el.style.setProperty('--hdr-bg', 'linear-gradient(rgba(8,10,16,.45),rgba(8,10,16,.45)), url("' + bild + '")');
+    el.style.setProperty('--hdr-text', '#ffffff');
+    el.classList.remove('plain');
+    return;
+  }
+  el.style.setProperty('--hdr-bg', preset.bg);
+  el.style.setProperty('--hdr-text', preset.text);
+  el.classList.toggle('plain', preset.id === 'schlicht');
+}
+
+function renderHdrSwatches() {
+  const aktiv = getHeaderPreset(DATA.meta.headerStil).id;
+  $('hdrSwatches').innerHTML = HEADER_PRESETS.map(p =>
+    '<button type="button" class="hdr-swatch' + (p.id === aktiv ? ' active' : '') + '"' +
+    ' style="background:' + (p.swatch || p.bg) + '" data-preset="' + esc(p.id) + '"' +
+    ' title="' + esc(p.label) + '" aria-label="' + esc(p.label) + '"></button>'
+  ).join('');
+}
+
+function setHeaderStil(id) {
+  DATA.meta.headerStil = getHeaderPreset(id).id;
+  saveData(DATA);
+  renderHdrSwatches();
+  applyHeaderStil();
+}
+
+$('hdrSwatches').addEventListener('click', (e) => {
+  const btn = e.target.closest('.hdr-swatch');
+  if (btn) setHeaderStil(btn.dataset.preset);
+});
+
+/* Bild im Browser verkleinern und als Data-URL zurueckgeben. Kein Upload, kein fremder Dienst. */
+function verkleinereBild(file, maxBreite, qualitaet) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Datei konnte nicht gelesen werden'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Bild konnte nicht gelesen werden'));
+      img.onload = () => {
+        let w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) { reject(new Error('Bild ohne Größe')); return; }
+        if (w > maxBreite) { h = Math.round(h * (maxBreite / w)); w = maxBreite; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', qualitaet));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* Der Kopfstreifen ist breit und flach — 1400 px Breite reichen auch auf grossen Bildschirmen.
+   Wird die Data-URL zu gross, wird stufenweise staerker verkleinert statt still zu scheitern. */
+const HDR_BILD_STUFEN = [[1400, 0.72], [1000, 0.66], [800, 0.58]];
+const HDR_BILD_MAX_ZEICHEN = 500000; // ~366 KB Bilddaten, unkritisch neben dem 5-MB-Limit von localStorage
+
+/* Schreibt das Bild und macht die Aenderung rueckgaengig, falls localStorage voll ist —
+   sonst wuerde jede spaetere Speicherung des Datenbestands an derselben Stelle scheitern. */
+function setzeHeaderBild(dataUrl) {
+  const alt = DATA.meta.headerBild || null;
+  DATA.meta.headerBild = dataUrl;
+  try {
+    saveData(DATA);
+  } catch (e) {
+    DATA.meta.headerBild = alt;
+    try { saveData(DATA); } catch (e2) { /* dann war der Speicher schon vorher voll */ }
+    alert('Das Bild passt nicht mehr in den Speicher dieses Browsers. Bitte ein kleineres Bild wählen.');
+    return false;
+  }
+  return true;
+}
+
+function renderHdrBildUI() {
+  const box = $('hdrBildVorschau');
+  const weg = $('hdrBildEntfernen');
+  const bild = DATA.meta.headerBild || '';
+  if (!bild) { box.innerHTML = ''; weg.hidden = true; return; }
+  box.innerHTML = '<img alt="Kopfbereich-Bild">';
+  box.firstChild.src = bild;   // ueber die Eigenschaft statt ueber HTML — keine Escaping-Frage
+  weg.hidden = false;
+}
+
+$('hdrBildWaehlen').addEventListener('click', () => $('hdrBildInput').click());
+
+$('hdrBildInput').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    let dataUrl = null;
+    for (const [breite, q] of HDR_BILD_STUFEN) {
+      dataUrl = await verkleinereBild(file, breite, q);
+      if (dataUrl.length <= HDR_BILD_MAX_ZEICHEN) break;
+    }
+    if (!dataUrl || dataUrl.length > HDR_BILD_MAX_ZEICHEN) {
+      alert('Dieses Bild bleibt auch verkleinert zu groß. Bitte ein anderes wählen.');
+      return;
+    }
+    if (!setzeHeaderBild(dataUrl)) return;
+    renderHdrBildUI();
+    applyHeaderStil();
+  } catch (err) {
+    alert('Bild konnte nicht verarbeitet werden.');
+  }
+});
+
+$('hdrBildEntfernen').addEventListener('click', () => {
+  DATA.meta.headerBild = null;
+  saveData(DATA);
+  renderHdrBildUI();
+  applyHeaderStil();
+});
+
 /* ---------- spec/09 §4 — Filter- & Sortier-Panel ---------- */
 
 function renderFilterButtonBadge() {
@@ -2478,6 +2690,8 @@ function renderSettingsPanelContent() {
   $('btnTrashLabel').textContent = 'Papierkorb' + (DATA.papierkorb.length ? ' (' + DATA.papierkorb.length + ')' : '');
   $('settingsAboutLine').textContent = 'Song-App · Schema v' + DATA.schemaVersion;
   syncThemeUI();
+  renderHdrSwatches();   /* spec/12 §3 */
+  renderHdrBildUI();     /* spec/12 §3 */
 }
 
 function openSettingsPanel() {
@@ -2859,7 +3073,9 @@ function reflowLines(lines, cols) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const next = lines[i + 1];
-    if (isChordLine(line) && next !== undefined && next.trim() !== '' && !isChordLine(next)) {
+    /* spec/12 §2 — eine Abschnittsmarke direkt unter einer Akkordzeile ist KEIN Akkord-Text-Paar.
+       Ohne diese Bedingung wuerde "[Chorus]" beim Umbruch an die Akkordzeile gekoppelt. */
+    if (isChordLine(line) && next !== undefined && next.trim() !== '' && !isChordLine(next) && !isSectionLine(next)) {
       out.push(...wrapChordPair(line, next, cols));
       i++;
     } else {
@@ -3172,7 +3388,11 @@ function tempoZuRegler(tempo) {
    und Transponieren bleiben unveraendert, hier wird nur zeilenweise HTML statt Klartext gebaut. */
 function stageBodyHtml(text) {
   return text.split('\n').map(line => {
-    return isChordLine(line) ? '<span class="chordline">' + stageChordLineHtml(line) + '</span>' : esc(line);
+    if (isChordLine(line)) return '<span class="chordline">' + stageChordLineHtml(line) + '</span>';
+    /* spec/12 §2 — Abschnittsmarke hervorheben. isSectionLine() stammt aus spec/11 und ist
+       dort gegen Testfaelle abgesichert; hier wird nur die Anzeige ergaenzt. */
+    if (isSectionLine(line)) return '<span class="sectionline">' + esc(line) + '</span>';
+    return esc(line);
   }).join('\n');
 }
 
@@ -4008,6 +4228,7 @@ $('si_confirmBtn').addEventListener('click', () => {
    Init
    ============================================================ */
 autoPurgeTrash();
+applyHeaderStil();   /* spec/12 §3 — vor dem ersten render(), damit der Kopf nicht aufblitzt */
 render();
 checkShareLink();
 </script>
