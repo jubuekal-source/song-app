@@ -968,6 +968,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <button type="button" id="sd_startBtn" class="primary">▶ Starten</button>
   <button type="button" id="sd_editBtn">Details bearbeiten</button>
   <button type="button" id="sd_shareBtn" title="Diese Setlist als Link oder QR-Code weitergeben">🔗 Teilen</button>
+  <button type="button" id="sd_shareTextBtn" title="Setlist als Textliste kopieren oder teilen">📋 Als Text teilen</button>
 
   <div class="setlist-entries" id="setlistEntries"></div>
 
@@ -1072,7 +1073,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.3';
+const APP_VERSION = '1.0.4';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -4683,6 +4684,55 @@ $('sh_shareBtn').addEventListener('click', async () => {
   catch (e) { /* Abbruch durch den Nutzer ist kein Fehler */ }
 });
 $('sh_closeBtn').addEventListener('click', () => { shareSetlistId = null; $('shareDialog').close(); });
+
+/* ---------- spec/19 — Setlist als Textliste ---------- */
+
+function buildSetlistText(setlistId) {
+  const sl = DATA.setlists.find(s => s.id === setlistId);
+  if (!sl) return '';
+  const zeilen = ['Setlist: ' + (sl.name || '(ohne Namen)')];
+  let nr = 0;
+  sl.eintraege.forEach(entry => {
+    const song = DATA.songs.find(s => s.id === entry.songId);
+    if (!song) return;                                    // Papierkorb-Song ueberspringen (spec/07 §3.3)
+    nr++;
+    const tonart = entry.tonartAbweichend || song.tonartWir || '';
+    zeilen.push(nr + '. ' + (song.titel || '(ohne Titel)') + (tonart ? ' (' + tonart + ')' : ''));
+    if (entry.notiz) zeilen.push('   ↳ ' + entry.notiz);
+  });
+  if (nr === 0) return '';
+  return zeilen.join('\n');
+}
+
+$('sd_shareTextBtn').addEventListener('click', async () => {
+  if (!currentSetlistId) return;
+  const text = buildSetlistText(currentSetlistId);
+  if (!text) { alert('Diese Setlist enthält keine spielbaren Songs.'); return; }
+  if (typeof navigator.share === 'function') {
+    const sl = DATA.setlists.find(s => s.id === currentSetlistId);
+    try { await navigator.share({ title: 'Setlist: ' + (sl ? sl.name : ''), text }); }
+    catch (e) { /* Abbruch durch den Nutzer ist kein Fehler */ }
+    return;
+  }
+  let ok = false;
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      ok = true;
+    }
+  } catch (e) { ok = false; }
+  if (!ok) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    document.body.removeChild(ta);
+  }
+  const btn = $('sd_shareTextBtn');
+  const label = btn.textContent;
+  btn.textContent = ok ? '✓ Kopiert' : 'Bitte von Hand kopieren';
+  setTimeout(() => { btn.textContent = label; }, 2500);
+});
 
 /* ---------- spec/07 §6 — geteilten Link empfangen ---------- */
 
