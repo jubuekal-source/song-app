@@ -1073,7 +1073,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.5';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -1207,6 +1207,10 @@ function commit() {
   saveData(DATA);
   render();
 }
+
+/* spec/10 §1 — echt leerer Speicher (noch nie besucht), nicht nur eine leere Songliste
+   (die kann auch entstehen, wenn jemand später alles loescht — dann NICHT nochmal laden) */
+const IST_ERSTER_START = localStorage.getItem(LS_KEY) === null;
 
 let DATA = loadData();
 
@@ -1444,6 +1448,238 @@ function deleteTag(id) {
 
 function defaultSetlist() {
   return { id: uuid(), name: '', anlass: '', datum: '', notiz: '', eintraege: [] };
+}
+
+/* ---------- Demo-Paket (spec/10 §1) ----------
+   Laedt beim allerersten Start (echt leerer localStorage) 4 gemeinfreie Songs, 3 Tags und
+   eine als Beispiel gekennzeichnete Setlist, damit die App nicht leer wirkt und die
+   Kernfunktionen (Rendern, Transponieren, Buehnenmodus, Setlist mit Notizen/abweichender
+   Tonart) direkt sichtbar sind. Lizenzstatus recherchiert, nicht geraten: Text UND Melodie
+   sind bei allen vier Songs gemeinfrei (Autor/Komponist über 70 Jahre tot bzw. anonymes
+   Volkslied). Quellen je Song in quelleUrl/quelleNotiz. */
+
+const DEMO_TAGS = [
+  { name: 'Lagerfeuer' },
+  { name: 'Weihnachten' },
+  { name: 'Bekannt' }
+];
+
+const DEMO_SONGS_ROH = [
+  {
+    titel: 'Stille Nacht, heilige Nacht',
+    interpret: 'Traditional',
+    tonartWir: 'D',
+    tags: ['Weihnachten', 'Bekannt'],
+    quelleUrl: 'https://www.e-chords.com/chords/joseph-mohr-franz-gruber/silent-night-stille-nacht',
+    quelleNotiz: 'Text: Joseph Mohr († 1848), Melodie: Franz Xaver Gruber († 1863) — gemeinfrei, Demo-Song',
+    body: `Strophe 1
+D             A7      D
+Stille Nacht, heilige Nacht,
+D
+Alles schläft; einsam wacht
+G                          D
+Nur das traute hochheilige Paar.
+G                        D
+Holder Knabe im lockigen Haar,
+A7                    D
+Schlaf in himmlischer Ruh!
+D                     A7  D
+Schlaf in himmlischer Ruh!
+
+Strophe 2
+D             A7      D
+Stille Nacht, heilige Nacht,
+D
+Hirten erst kundgemacht
+G               D
+Durch der Engel Halleluja,
+G                         D
+Tönt es laut von fern und nah:
+A7                     D
+Christ, der Retter ist da!
+D                      A7 D
+Christ, der Retter ist da!
+
+Strophe 3
+D             A7      D
+Stille Nacht, heilige Nacht,
+D
+Gottes Sohn, o wie lacht
+G                           D
+Lieb' aus deinem göttlichen Mund,
+G                           D
+Da uns schlägt die rettende Stund'.
+A7                D
+Christ, in deiner Geburt!
+D                 A7     D
+Christ, in deiner Geburt!`
+  },
+  {
+    titel: 'Kein schöner Land in dieser Zeit',
+    interpret: 'Traditional',
+    tonartWir: 'C',
+    tags: ['Lagerfeuer', 'Bekannt'],
+    quelleUrl: 'https://guitarsongs.club/song/44665',
+    quelleNotiz: 'Text/Melodie: Anton Wilhelm von Zuccalmaglio († 1869), veröffentlicht 1840 — gemeinfrei, Demo-Song',
+    body: `Strophe 1
+C            G              C        G
+Kein schöner Land in dieser Zeit als hier das uns're weit und breit
+Refrain 1
+C          G                 F          G        C
+Wo wir uns finden wohl unter Linden zur Abendzeit
+
+Strophe 2
+C               G                      C     G
+Da haben wir so manche Stund' gesessen da in froher Rund
+Refrain 2
+C         G                  F          G          C
+Und taten singen, die Lieder klingen im Eichengrund
+
+Strophe 3
+C                    G               C          G
+Dass wir uns hier in diesem Tal noch treffen so viel hundertmal
+Refrain 3
+C           G                     F                  G   C
+Gott mag es schenken, Gott mag es lenken. Er hat die Gnad
+
+Strophe 4
+C               G               C       G
+Nun Brüder eine gute Nacht. Der Herr im hohen Himmel wacht.
+Refrain 4
+C         G           F              G      C
+In seiner Güte uns zu behüten ist er bedacht`
+  },
+  {
+    titel: 'Der Mond ist aufgegangen',
+    interpret: 'Traditional',
+    tonartWir: 'C',
+    tags: ['Lagerfeuer'],
+    quelleUrl: 'https://www.e-chords.com/chords/misc-traditional/der-mond-ist-aufgegangen',
+    quelleNotiz: 'Text: Matthias Claudius († 1815), Melodie: Johann Abraham Peter Schulz († 1800) — gemeinfrei, Demo-Song. Strophen 1–3 von ursprünglich 7 (die heute gebräuchliche Auswahl).',
+    body: `Strophe 1
+C   G7   C   F   C  G7  C
+Der Mond ist auf-ge-gan-gen,
+            F    C    G7  C
+die goldnen Sternlein prangen
+C  F      C        G
+am Himmel hell und klar.
+C   G7   C     F       C   G7     C
+Der Wald steht schwarz und schwei-get
+            F  C   G7  C
+und aus den Wiesen steiget
+C   F     C G7  C
+der weiße Nebel wunderbar.
+
+Strophe 2
+C   G7  C   F    C  G7   C
+Wie ist die Welt so stil-le.
+            F   C     G7 C
+Und aus der Dämm'rung Hülle
+C  F        C      G
+so traulich und so hold.
+C   G7 C  F    C  G7  C
+Als ei-ne stil-le Kam-mer,
+           F C   G7 C
+wo ihr des Tages Jammer
+C           F   C  G7     C
+verschlafen und vergessen sollt.
+
+Strophe 3
+C    G7  C   F    C    G7  C
+Seht ihr den Mond dort ste-hen.
+           F    C  G7 C
+Er ist nur halb zu se-hen
+C       F    C        G
+und ist doch rund und schön.
+C  G7   C    F   C   G7 C
+So sind wohl man-che Sa-chen,
+        F       C  G7 C
+die wir getrost verlachen,
+C    F     C G7  C
+weil unsre Augen sie nicht sehn.`
+  },
+  {
+    titel: 'O Tannenbaum',
+    interpret: 'Traditional',
+    tonartWir: 'G',
+    tags: ['Weihnachten', 'Bekannt'],
+    quelleUrl: 'https://www.e-chords.com/chords/misc-traditional/oh-tannenbaum',
+    quelleNotiz: 'Text: Ernst Anschütz († 1861), Melodie anonym/älter als 1600 — gemeinfrei, Demo-Song',
+    body: `Strophe 1
+G
+O Tannenbaum, o Tannenbaum
+              D7    D7  G
+Wie treu sind deine Blätter.
+G                       C     D7
+Du grünst nicht nur zur Sommerzeit,
+D7                           G
+Nein auch im Winter, wenn es schneit.
+G
+O Tannenbaum, o Tannenbaum
+              D7    D7  G
+Wie treu sind deine Blätter!
+
+Strophe 2
+G
+O Tannenbaum, o Tannenbaum
+              D7   D7   G
+Du kannst mir sehr gefallen!
+G                     C      D7
+Wie oft hat nicht zur Winterszeit
+D7                         G
+Ein Baum von dir mich hoch erfreut!
+G
+O Tannenbaum, o Tannenbaum
+              D7   D7   G
+Du kannst mir sehr gefallen!
+
+Strophe 3
+G
+O Tannenbaum, o Tannenbaum
+                     D7  D7 G
+Dein Kleid will mich was lehren:
+G                C     D7
+Die Hoffnung und Beständigkeit
+D7                          G
+Gibt Mut und Kraft zu jeder Zeit!
+G
+O Tannenbaum, o Tannenbaum
+                     D7  D7 G
+Dein Kleid will mich was lehren.`
+  }
+];
+
+function ladeDemoPaket() {
+  const tagMap = {};
+  DEMO_TAGS.forEach(t => {
+    const tag = normalizeTag({ name: t.name });
+    DATA.tags.push(tag);
+    tagMap[t.name] = tag.id;
+  });
+
+  const songs = DEMO_SONGS_ROH.map(roh => {
+    const song = defaultSong();
+    song.titel = roh.titel;
+    song.interpret = roh.interpret;
+    song.tonartOriginal = roh.tonartWir;
+    song.tonartWir = roh.tonartWir;
+    song.body = roh.body;
+    song.quelleUrl = roh.quelleUrl;
+    song.quelleNotiz = roh.quelleNotiz;
+    song.tagIds = roh.tags.map(name => tagMap[name]);
+    DATA.songs.push(song);
+    return song;
+  });
+
+  const sl = defaultSetlist();
+  sl.name = 'Beispiel-Setlist (zum Ausprobieren)';
+  sl.notiz = 'So kann eine Setlist aussehen — mit Notizen und abweichender Tonart je Eintrag. Kannst du löschen oder als Vorlage nutzen.';
+  sl.eintraege = [
+    { songId: songs[1].id, tonartAbweichend: null, notiz: 'Zum Ankommen, alle mitsingen' },
+    { songId: songs[2].id, tonartAbweichend: null, notiz: 'Ruhiger, zum Abend passend' },
+    { songId: songs[0].id, tonartAbweichend: 'C', notiz: 'Leiser Abschluss — hier tiefer, falls der Vorsänger das lieber mag' }
+  ];
+  DATA.setlists.push(sl);
 }
 
 function normalizeSetlistEntry(raw) {
@@ -2033,7 +2269,7 @@ function renderSetlistEntries(setlist) {
           (sub ? '<div class="entry-sub">' + sub + '</div>' : '') +
         '</button>' +
         '<div class="entry-key">' +
-          '<input type="text" maxlength="10" value="' + esc(tonart) + '" data-action="tonart" data-index="' + i + '"' + (song ? '' : ' disabled') + '>' +
+          '<input type="text" maxlength="10" value="' + esc(tonart) + '" placeholder="Tonart" aria-label="Tonart für diesen Eintrag" data-action="tonart" data-index="' + i + '"' + (song ? '' : ' disabled') + '>' +
           (abweichend ? '<button type="button" class="key-badge" data-action="resetTonart" data-index="' + i + '" title="Zurücksetzen auf normale Tonart">↺</button>' : '') +
         '</div>' +
         '<button type="button" class="danger" data-action="removeEntry" data-index="' + i + '" aria-label="Entfernen">✕</button>' +
@@ -4921,6 +5157,7 @@ function registriereServiceWorker() {
 /* ============================================================
    Init
    ============================================================ */
+if (IST_ERSTER_START) { ladeDemoPaket(); saveData(DATA); }  /* spec/10 §1 */
 autoPurgeTrash();
 applyHeaderStil();       /* spec/12 §3 — vor dem ersten render(), damit der Kopf nicht aufblitzt */
 renderInstallHinweis();  /* spec/13 §1 */
