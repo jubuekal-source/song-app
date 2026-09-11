@@ -205,7 +205,8 @@ textarea.mono { font-family: ui-monospace, "Courier New", monospace; }
   border-radius: 50%; background: var(--danger); border: 1px solid var(--surface);
 }
 
-/* spec/09 §4 — Segment-Auswahl (Sortierung, Theme) statt <select>/Kreis-Umschalter */
+/* spec/09 §4 — Segment-Auswahl (Theme, Kopfhoehe) statt <select>/Kreis-Umschalter.
+   Die Sortierung nutzt seit spec/21 §5 stattdessen .filter-sort-list (siehe unten). */
 .seg-group { display: flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
 .seg-group button {
   flex: 1 1 auto; border: none; border-radius: 0; min-height: 40px;
@@ -213,8 +214,9 @@ textarea.mono { font-family: ui-monospace, "Courier New", monospace; }
 }
 .seg-group button:last-child { border-right: none; }
 .seg-group button.on { background: var(--accent); color: #fff; }
-/* spec/09 §4 — Sortier-Segmente haben laengere Labels als die Theme-Segmente */
-.filter-block .seg-group button { font-size: .78rem; padding: .3rem .25rem; line-height: 1.15; white-space: normal; }
+
+/* spec/21 §4 — Trichter-Icon im Filter-Knopf, currentColor faerbt automatisch mit */
+.filter-icon { vertical-align: -2px; margin-right: .15rem; }
 
 /* spec/09 §4 — Filter-Panel: Popover unter dem Header */
 #settingsBackdrop, #filterBackdrop {
@@ -237,7 +239,17 @@ textarea.mono { font-family: ui-monospace, "Courier New", monospace; }
 }
 .filter-tag-row.on { background: color-mix(in srgb, var(--accent) 18%, transparent); }
 .filter-tag-dot { width: 12px; height: 12px; border-radius: 50%; flex: 0 0 auto; }
-#filterPanelActions { display: flex; justify-content: flex-end; margin-top: .75rem; }
+
+/* spec/21 §2 — Panel-Kopf mit Schliessen-Kreuz, analog .settings-head */
+.filter-panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.filter-panel-head h2 { margin: 0; font-size: 1.1rem; }
+
+/* spec/21 §5 — Sortierung als Zeilenliste statt Segment-Balken, gleiche Optik wie #filterTagList */
+.filter-sort-list { display: flex; flex-direction: column; }
+.filter-check { opacity: 0; width: 1.1em; flex: 0 0 auto; }
+.filter-tag-row.on .filter-check { opacity: 1; }
+
+#filterPanelActions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .75rem; }
 
 /* spec/09 §3 — Einstellungen als Slide-in-Schublade von rechts, kein <dialog> (Top-Layer-Bug) */
 #settingsPanel {
@@ -383,6 +395,15 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 #smartPasteBox legend { font-weight: 600; padding: 0 .3rem; }
 #sp_input { width: 100%; box-sizing: border-box; }
 .sp-result { margin: .2rem 0 0; color: var(--text); font-weight: 500; }
+/* spec/18 §2 — Dublettenwarnung */
+.dup-hint {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; margin: .5rem 0;
+  padding: .5rem .7rem; border-radius: 8px; font-size: .9rem;
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, transparent);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+}
+.dup-hint span { flex: 1 1 12rem; }
+.dup-hint button { flex: 0 0 auto; }
 
 #f_fieldsBox { margin: .75rem 0; border: 1px solid var(--border); border-radius: 8px; }
 #f_fieldsBox > summary {
@@ -443,6 +464,20 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 .stage-title .s { font-size: .78rem; color: #99a0ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #stagePos { font-size: .78rem; color: #99a0ac; flex: 0 0 auto; }
 #stageEmpty { padding: 2rem 1rem; color: #99a0ac; white-space: normal; }
+/* spec/17 §3 — Eintragsnotiz über dem Text, "Als Nächstes" am Textende (nur aus einer Setlist) */
+.stage-note, .stage-next {
+  display: block; white-space: pre-wrap; font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.35; border-radius: 8px; padding: .5rem .7rem; max-width: 40rem;
+}
+.stage-note { margin: .2rem 0 .8rem; background: #2a2412; border: 1px solid #5c4a17; color: #f5dd9a; font-size: .9em; }
+.stage-next {
+  margin: 2rem 0 0; background: #151c26; border: 1px solid #2c3a4f; color: #dce6f3;
+  font-size: .85em; cursor: pointer; text-align: left; width: 100%; box-sizing: border-box;
+}
+.stage-next.ende { cursor: default; color: #99a0ac; }
+.stage-next .lbl { display: block; font-size: .8em; color: #8fa6c4; letter-spacing: .04em; text-transform: uppercase; }
+.stage-next .tt { display: block; font-weight: 600; font-size: 1.1em; }
+.stage-next .nn { display: block; margin-top: .2rem; color: #f5dd9a; }
 #stageTempo { width: 120px; flex: 0 0 auto; accent-color: #4c7dbb; }
 #stageTempoLabel { font-size: .78rem; color: #99a0ac; min-width: 3.6em; text-align: right; }
 #stageKeyLabel { font-size: .78rem; color: #99a0ac; min-width: 2.6em; text-align: center; }
@@ -482,6 +517,18 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 .entry-key { display: flex; align-items: center; gap: .3rem; }
 .entry-key input[type=text] { width: 4rem; text-align: center; padding: .3rem; }
 .key-badge { all: unset; cursor: pointer; color: var(--accent); font-size: .9rem; padding: .2rem; }
+/* spec/17 §1/§2 — Zeile 1 wie bisher, Zeile 2: Eintragsnotiz + Hoch/Runter */
+.setlist-entry { flex-wrap: wrap; row-gap: .2rem; }
+.entry-line2 { flex: 1 1 100%; box-sizing: border-box; min-width: 0; display: flex; align-items: center; gap: .3rem; padding-left: calc(44px + .5rem); }
+.entry-notiz {
+  flex: 1 1 auto; min-width: 0; width: auto; font-size: .85rem; padding: .3rem .4rem;
+  border: 1px solid transparent; background: transparent; color: var(--text-muted); font-style: italic;
+}
+.entry-notiz:focus { border-color: var(--border); background: var(--bg, transparent); color: var(--text); font-style: normal; }
+.entry-notiz:not(:placeholder-shown) { color: var(--text); font-style: normal; }
+.entry-move { min-width: 40px; min-height: 40px; padding: 0; font-size: .85rem; flex: 0 0 auto; }
+.setlist-entry.moved { animation: entryMoved .8s ease; }
+@keyframes entryMoved { from { background: color-mix(in srgb, var(--accent) 28%, var(--surface)); } to { background: var(--surface); } }
 
 .song-picker-results { display: flex; flex-direction: column; gap: .3rem; max-height: 220px; overflow: auto; margin-top: .5rem; }
 .song-picker-row {
@@ -513,7 +560,8 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <div class="header-actions">
     <button type="button" id="btnNewSong" class="primary">+ Song</button>
     <input type="search" id="searchInput" placeholder="Suche…" aria-label="Songs durchsuchen">
-    <button type="button" id="btnFilter" title="Filter &amp; Sortierung" aria-label="Filter und Sortierung">⚗ Filter<span id="filterCount"></span></button>
+    <!-- spec/21 §4 — Trichter statt Retorte, currentColor uebernimmt Knopf-/Aktiv-Farbe automatisch -->
+    <button type="button" id="btnFilter" title="Filter &amp; Sortierung" aria-label="Filter und Sortierung"><svg class="filter-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M2.5 3.5h15L12 10.8v5.2l-4 1.8v-7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> Filter<span id="filterCount"></span></button>
     <button type="button" id="btnSetlists" title="Setlists">🎵 Setlists</button>
   </div>
 </header>
@@ -537,12 +585,18 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 <!-- spec/09 §4 — Filter- und Sortier-Panel -->
 <div id="filterBackdrop" hidden></div>
 <div id="filterPanel" hidden>
+  <!-- spec/21 §2 — Schliessen-Kreuz oben rechts, gleichwertig zu "Fertig"/Escape/Backdrop -->
+  <div class="filter-panel-head">
+    <h2>Filter &amp; Sortierung</h2>
+    <button type="button" id="filterPanelClose" aria-label="Schließen">✕</button>
+  </div>
   <div class="filter-block">
     <h3>Sortierung</h3>
-    <div class="seg-group" id="sortSeg">
-      <button type="button" data-sort="titel">Titel (A–Z)</button>
-      <button type="button" data-sort="zuletzt">Zuletzt gespielt</button>
-      <button type="button" data-sort="laengsteNicht">Am längsten nicht gespielt</button>
+    <!-- spec/21 §5 — Zeilenliste mit Haekchen statt Segment-Balken, gleiche Optik wie #filterTagList -->
+    <div class="filter-sort-list" id="sortSeg">
+      <button type="button" class="filter-tag-row" data-sort="titel"><span class="filter-check">✓</span>Titel (A–Z)</button>
+      <button type="button" class="filter-tag-row" data-sort="zuletzt"><span class="filter-check">✓</span>Zuletzt gespielt</button>
+      <button type="button" class="filter-tag-row" data-sort="laengsteNicht"><span class="filter-check">✓</span>Am längsten nicht gespielt</button>
     </div>
   </div>
   <!-- spec/12 §1 — Favoriten-Filter -->
@@ -559,6 +613,8 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <div id="filterTagList"></div>
   </div>
   <div id="filterPanelActions">
+    <!-- spec/21 §3 — setzt Sortierung, Favoriten, Stale und Tag zurueck; Suche bleibt aussen vor -->
+    <button type="button" id="filterResetBtn">Zurücksetzen</button>
     <button type="button" id="filterDoneBtn" class="primary">Fertig</button>
   </div>
 </div>
@@ -705,6 +761,12 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       </div>
       <p id="sp_result" class="hint sp-result" hidden></p>
     </fieldset>
+
+    <!-- spec/18 §2 — Dublettenwarnung, bewusst ausserhalb des Akkordeons (auch zugeklappt sichtbar) -->
+    <p id="f_dupHint" class="dup-hint" hidden>
+      <span id="f_dupText"></span>
+      <button type="button" id="f_dupMergeBtn">Stattdessen diesen ergänzen</button>
+    </p>
 
     <!-- spec/11 §2.1 — alle bisherigen Felder unveraendert, nur aufklappbar -->
     <details id="f_fieldsBox">
@@ -1010,7 +1072,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.0.3';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -1080,10 +1142,12 @@ function defaultData() {
       titel: 'Meine Songs', besitzer: '', theme: 'system',
       schriftgroesse: 1.0, zuletztExport: null, aenderungenSeitExport: 0,
       /* spec/12 §3 — Kopfbereich. headerBild ist eine Data-URL oder null. Beides sind reine
-         meta-Felder, deshalb ohne schemaVersion-Erhoehung und ohne Migration. */
-      headerStil: 'nachtblau', headerBild: null,
-      /* spec/13 §2/§1 — Kopfhoehe 'kompakt'|'gross', Startbildschirm-Hinweis einmalig */
-      headerHoehe: 'kompakt', installHinweisWeg: false,
+         meta-Felder, deshalb ohne schemaVersion-Erhoehung und ohne Migration.
+         spec/22 — Grundwert ist das mitgelieferte Lagerfeuer-Foto-Preset, nicht die Farbe. */
+      headerStil: 'lagerfeuer_bild', headerBild: null,
+      /* spec/13 §2/§1 — Kopfhoehe 'kompakt'|'gross', Startbildschirm-Hinweis einmalig.
+         spec/22 — Grundwert ist 'gross', damit das Foto beim ersten Start volle Wirkung zeigt. */
+      headerHoehe: 'gross', installHinweisWeg: false,
       /* spec/14 §1 — Name im Kopfbereich ausblendbar (z. B. wenn er schon im Bild steht) */
       titelZeigen: true
     },
@@ -1450,6 +1514,20 @@ function setEntryTonart(setlistId, index, value) {
   commit();
 }
 
+/* spec/17 §2 — Eintragsnotiz ("Ansage davor", "nur 2 Strophen" …). Feld existiert seit spec/02,
+   hier bekommt es seine Oberflaeche. Nur bei echter Aenderung committen (Backup-Zaehler). */
+function setEntryNotiz(setlistId, index, value) {
+  const setlist = DATA.setlists.find(s => s.id === setlistId);
+  if (!setlist) return false;
+  const entry = setlist.eintraege[index];
+  if (!entry) return false;
+  const text = String(value || '').trim().slice(0, 200);
+  if ((entry.notiz || '') === text) return false;
+  entry.notiz = text;
+  commit();
+  return true;
+}
+
 function resetEntryTonart(setlistId, index) {
   const setlist = DATA.setlists.find(s => s.id === setlistId);
   if (!setlist) return;
@@ -1515,20 +1593,45 @@ function staleBadgeLabel(song) {
    nach einem einzelnen Akkordnamen wie "G" oder "D" hunderte Zufallstreffer). */
 function songLyricsSearchText(song) {
   if (!song.body) return '';
-  return song.body.split('\n')
+  return suchNorm(song.body.split('\n')      /* spec/18 §1 — bereits normalisiert */
     .filter(line => !isChordLine(line))
-    .join(' ')
-    .toLowerCase();
+    .join(' '));
+}
+
+/* spec/18 §1 — umlauttolerante Suche: klein, ß → ss, Akzente/Umlautpunkte weg.
+   Wird auf BEIDEN Seiten angewendet (Suchbegriff und Songdaten). */
+function suchNorm(text) {
+  return String(text || '').toLowerCase().replace(/ß/g, 'ss')
+    .normalize('NFD').replace(/\p{M}/gu, '');
+}
+
+/* spec/18 §2 — Vergleichsschluessel fuer Dubletten: zusaetzlich Satz-/Sonderzeichen weg */
+function dublettenNorm(text) {
+  return suchNorm(text).replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+}
+
+/* spec/18 §2 — Treffer: gleicher Titel UND (gleicher Interpret ODER einer der beiden leer).
+   Der eigene Song (eigeneId) zaehlt nie; DATA.songs enthaelt keine Papierkorb-Songs. */
+function findeDublette(titel, interpret, eigeneId) {
+  const t = dublettenNorm(titel);
+  if (!t) return null;
+  const i = dublettenNorm(interpret);
+  return DATA.songs.find(s => {
+    if (s.id === eigeneId) return false;
+    if (dublettenNorm(s.titel) !== t) return false;
+    const si = dublettenNorm(s.interpret);
+    return !i || !si || si === i;
+  }) || null;
 }
 
 function getVisibleSongs() {
   let list = DATA.songs;
-  const q = searchTerm.trim().toLowerCase();
+  const q = suchNorm(searchTerm.trim());   /* spec/18 §1 */
   if (q) {
     list = list.filter(s =>
-      s.titel.toLowerCase().includes(q) ||
-      s.interpret.toLowerCase().includes(q) ||
-      (s.alternativTitel || []).some(t => t.toLowerCase().includes(q)) ||
+      suchNorm(s.titel).includes(q) ||
+      suchNorm(s.interpret).includes(q) ||
+      (s.alternativTitel || []).some(t => suchNorm(t).includes(q)) ||
       songLyricsSearchText(s).includes(q)
     );
   }
@@ -1724,6 +1827,7 @@ function openSongDialog(id) {
   renderFormStars();
   renderTagCheckboxes();
   renderHistorieSection(song);
+  updateDupHint();   /* spec/18 §2 */
 
   $('songDialog').showModal();
 }
@@ -1913,6 +2017,7 @@ function renderSetlistEntries(setlist) {
     el.innerHTML = '<p class="hint">Noch keine Songs in dieser Setlist.</p>';
     return;
   }
+  const last = setlist.eintraege.length - 1;
   el.innerHTML = setlist.eintraege.map((entry, i) => {
     const song = DATA.songs.find(s => s.id === entry.songId);
     const titel = song ? (song.titel || '(ohne Titel)') : '(Song im Papierkorb)';
@@ -1931,16 +2036,23 @@ function renderSetlistEntries(setlist) {
           (abweichend ? '<button type="button" class="key-badge" data-action="resetTonart" data-index="' + i + '" title="Zurücksetzen auf normale Tonart">↺</button>' : '') +
         '</div>' +
         '<button type="button" class="danger" data-action="removeEntry" data-index="' + i + '" aria-label="Entfernen">✕</button>' +
+        /* spec/17 §1/§2 — zweite Zeile: Notiz + Hoch/Runter */
+        '<div class="entry-line2">' +
+          '<input type="text" class="entry-notiz" maxlength="200" data-action="entryNotiz" data-index="' + i + '"' +
+            ' value="' + esc(entry.notiz || '') + '" placeholder="＋ Notiz" aria-label="Notiz zu diesem Eintrag">' +
+          '<button type="button" class="entry-move" data-action="moveUp" data-index="' + i + '" aria-label="Nach oben"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+          '<button type="button" class="entry-move" data-action="moveDown" data-index="' + i + '" aria-label="Nach unten"' + (i === last ? ' disabled' : '') + '>▼</button>' +
+        '</div>' +
       '</div>';
   }).join('');
 }
 
 function renderSongPicker() {
   const el = $('setlistSongPickerResults');
-  const q = setlistSongPickerTerm.trim().toLowerCase();
+  const q = suchNorm(setlistSongPickerTerm.trim());   /* spec/18 §1 */
   let matches = DATA.songs;
   if (q) {
-    matches = matches.filter(s => s.titel.toLowerCase().includes(q) || s.interpret.toLowerCase().includes(q));
+    matches = matches.filter(s => suchNorm(s.titel).includes(q) || suchNorm(s.interpret).includes(q));
   }
   matches = [...matches].sort((a, b) => a.titel.localeCompare(b.titel, 'de', { sensitivity: 'base' })).slice(0, 20);
   if (matches.length === 0) {
@@ -2465,7 +2577,44 @@ function smartPasteAnwenden() {
   $('f_fieldsBox').open = true;            // spec/11 §2.3 — Ergebnis muss sichtbar sein
 }
 
-$('sp_run').addEventListener('click', smartPasteAnwenden);
+$('sp_run').addEventListener('click', () => { smartPasteAnwenden(); updateDupHint(); });   /* spec/18 §2 */
+
+/* spec/18 §2 — Dublettenhinweis im Song-Dialog aktuell halten */
+var dupTreffer = null;   // var statt let: keine TDZ, falls openSongDialog frueh laeuft
+function updateDupHint() {
+  dupTreffer = findeDublette($('f_titel').value, $('f_interpret').value, editingSongId);
+  $('f_dupHint').hidden = !dupTreffer;
+  if (!dupTreffer) return;
+  $('f_dupText').textContent = '⚠ Gibt es schon: „' + (dupTreffer.titel || '') + '"' +
+    (dupTreffer.interpret ? ' · ' + dupTreffer.interpret : '');   // textContent: Fremdtext moeglich
+  $('f_dupMergeBtn').hidden = !!editingSongId;   // Ergaenzen nur beim Anlegen
+}
+$('f_titel').addEventListener('input', updateDupHint);
+$('f_interpret').addEventListener('input', updateDupHint);
+
+/* spec/18 §2 — "Stattdessen diesen ergaenzen": Formular wechselt auf den vorhandenen Song,
+   bisherige Eingaben landen dort NUR in leeren Feldern (Regel wie Smart-Paste/mergeImport). */
+$('f_dupMergeBtn').addEventListener('click', () => {
+  if (!dupTreffer || editingSongId) return;
+  const zielId = dupTreffer.id;
+  const eingaben = SP_FELDER.map(f => ({ id: f.id, wert: $(f.id).value }));
+  $('songDialog').close();
+  openSongDialog(zielId);
+  const uebernommen = [];
+  eingaben.forEach(e => {
+    const f = SP_FELDER.find(x => x.id === e.id);
+    if (String(e.wert == null ? '' : e.wert).trim() && feldIstLeer(e.id) && !(e.id === 'f_kapo' && String(e.wert).trim() === '0')) {
+      $(e.id).value = e.wert;
+      uebernommen.push(f.label);
+    }
+  });
+  const res = $('sp_result');
+  res.textContent = uebernommen.length
+    ? 'Vorhandener Song geöffnet. Ergänzt: ' + uebernommen.join(', ') + '. Zum Übernehmen „Speichern".'
+    : 'Vorhandener Song geöffnet. Alle Felder waren schon ausgefüllt, nichts ergänzt.';
+  res.hidden = false;
+  $('f_fieldsBox').open = true;
+});
 $('sp_clear').addEventListener('click', () => {
   $('sp_input').value = '';
   $('sp_result').hidden = true;
@@ -2839,9 +2988,17 @@ function renderActiveFilters() {
   ).join('') + (chips.length > 1 ? '<button type="button" class="reset-all" id="resetAllFilters">Alle zurücksetzen</button>' : '');
 }
 
+/* spec/21 §3 — "Zurücksetzen" im Panel ist deaktiviert, wenn ohnehin alles auf Grundeinstellung
+   steht (Sortierung 'titel', kein Favoriten-/Stale-/Tag-Filter). Suche zaehlt hier nicht mit. */
+function syncFilterResetBtn() {
+  const grundzustand = sortMode === 'titel' && !staleFilterActive && !favoritFilterActive && !activeTagFilter;
+  $('filterResetBtn').disabled = grundzustand;
+}
+
 function renderFilterUI() {
   renderFilterButtonBadge();
   renderActiveFilters();
+  syncFilterResetBtn();
 }
 
 $('activeFilters').addEventListener('click', (e) => {
@@ -2889,6 +3046,7 @@ $('sortSeg').addEventListener('click', (e) => {
   sortMode = btn.dataset.sort;
   $('sortSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
   renderList();
+  syncFilterResetBtn(); /* spec/21 §3 */
 });
 
 $('filterStaleToggle').addEventListener('click', () => {
@@ -2909,6 +3067,7 @@ function openFilterPanel() {
   $('filterStaleToggle').classList.toggle('active', staleFilterActive);
   $('filterFavToggle').classList.toggle('active', favoritFilterActive); /* spec/12 §1 */
   renderFilterTagList();
+  syncFilterResetBtn(); /* spec/21 §3 */
   $('filterBackdrop').hidden = false;
   $('filterPanel').hidden = false;
 }
@@ -2916,9 +3075,25 @@ function closeFilterPanel() {
   $('filterBackdrop').hidden = true;
   $('filterPanel').hidden = true;
 }
-$('btnFilter').addEventListener('click', openFilterPanel);
+/* spec/21 §1 — Knopf schaltet um, statt nur zu oeffnen */
+$('btnFilter').addEventListener('click', () => {
+  if ($('filterPanel').hidden) openFilterPanel(); else closeFilterPanel();
+});
 $('filterBackdrop').addEventListener('click', closeFilterPanel);
 $('filterDoneBtn').addEventListener('click', closeFilterPanel);
+$('filterPanelClose').addEventListener('click', closeFilterPanel); /* spec/21 §2 */
+
+/* spec/21 §3 — setzt Sortierung, Favoriten, Stale und Tag zurueck; Suche bleibt aussen vor,
+   das erledigt weiterhin "Alle zurücksetzen" in der Chip-Zeile ueber der Songliste. */
+$('filterResetBtn').addEventListener('click', () => {
+  sortMode = 'titel';
+  staleFilterActive = false; $('filterStaleToggle').classList.remove('active');
+  favoritFilterActive = false; $('filterFavToggle').classList.remove('active');
+  activeTagFilter = null;
+  $('sortSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sort === sortMode));
+  renderFilterTagList();
+  renderList(); renderFilterUI();
+});
 
 /* ---------- spec/09 §3 — Einstellungen-Schublade ---------- */
 
@@ -3009,6 +3184,12 @@ $('songForm').addEventListener('submit', (e) => {
     $('f_fieldsBox').open = true;   // spec/11 §2.3 — sonst liegt das Titelfeld unsichtbar im Akkordeon
     $('f_titel').focus();
     return;
+  }
+  /* spec/18 §2 — beim Anlegen einmal nachfragen, wenn es den Song schon gibt */
+  if (!editingSongId) {
+    const dup = findeDublette(values.titel, values.interpret, null);
+    if (dup && !confirm('„' + (dup.titel || '') + '"' + (dup.interpret ? ' · ' + dup.interpret : '') +
+        ' gibt es schon. Trotzdem als neuen Song anlegen?')) return;
   }
   if (editingSongId) updateSong(editingSongId, values);
   else createSong(values);
@@ -3115,7 +3296,7 @@ $('setlistDeleteBtn').addEventListener('click', () => {
 });
 
 $('sd_editBtn').addEventListener('click', () => { if (currentSetlistId) openSetlistFormDialog(currentSetlistId); });
-$('setlistDetailCloseBtn').addEventListener('click', () => { $('setlistDetailDialog').close(); currentSetlistId = null; });
+$('setlistDetailCloseBtn').addEventListener('click', () => { flushSetlistEntryNotizen(); /* spec/17 §2 */ $('setlistDetailDialog').close(); currentSetlistId = null; });
 
 $('setlistSongPickerInput').addEventListener('input', (e) => { setlistSongPickerTerm = e.target.value; renderSongPicker(); });
 $('setlistSongPickerResults').addEventListener('click', (e) => {
@@ -3136,10 +3317,13 @@ $('setlistEntries').addEventListener('click', (e) => {
   } else if (btn.dataset.action === 'resetTonart') {
     resetEntryTonart(currentSetlistId, index);
     renderSetlistDetail();
+  } else if (btn.dataset.action === 'moveUp' || btn.dataset.action === 'moveDown') {
+    moveSetlistEntryStep(index, btn.dataset.action === 'moveUp' ? -1 : 1);
   } else if (btn.dataset.action === 'playEntry') {
     /* spec/03 §2 — Dialog schliessen, BEVOR der Buehnenmodus oeffnet: <dialog> liegt im
        Browser-Top-Layer und wuerde sonst weiter ueber dem Buehnenmodus liegen (sichtbar
        "passiert nichts", Bug gemeldet von Marco am 09.08.2026). */
+    flushSetlistEntryNotizen();   /* spec/17 §2 */
     $('setlistDetailDialog').close();
     startSetlistStage(currentSetlistId, index);
   }
@@ -3148,6 +3332,7 @@ $('setlistEntries').addEventListener('click', (e) => {
 /* spec/03 §2 */
 $('sd_startBtn').addEventListener('click', () => {
   if (currentSetlistId) {
+    flushSetlistEntryNotizen();   /* spec/17 §2 */
     $('setlistDetailDialog').close();
     startSetlistStage(currentSetlistId, 0);
   }
@@ -3157,8 +3342,54 @@ $('setlistEntries').addEventListener('change', (e) => {
   if (e.target.dataset.action === 'tonart') {
     setEntryTonart(currentSetlistId, Number(e.target.dataset.index), e.target.value);
     renderSetlistDetail();
+  } else if (e.target.dataset.action === 'entryNotiz') {
+    /* spec/17 §2 — bewusst KEIN renderSetlistDetail(): sonst verliert das naechste Notizfeld,
+       in das gerade getippt wurde, den Fokus (Handy-Tastatur klappt zu). */
+    setEntryNotiz(currentSetlistId, Number(e.target.dataset.index), e.target.value);
   }
 });
+/* spec/17 §2 — Enter im Notizfeld = uebernehmen */
+$('setlistEntries').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.dataset && e.target.dataset.action === 'entryNotiz') {
+    e.preventDefault();
+    e.target.blur();
+  }
+});
+/* spec/17 §2 — Sicherheitsnetz: wird der Dialog geschlossen (auch per Escape), waehrend ein
+   Notizfeld noch Aenderungen hat, diese vorher uebernehmen. */
+function flushSetlistEntryNotizen() {
+  if (!currentSetlistId) return;
+  document.querySelectorAll('#setlistEntries [data-action="entryNotiz"]').forEach(inp => {
+    setEntryNotiz(currentSetlistId, Number(inp.dataset.index), inp.value);
+  });
+}
+$('setlistDetailDialog').addEventListener('close', flushSetlistEntryNotizen);
+
+/* spec/17 §1 — Hoch/Runter per Knopf. Der verschobene Eintrag bleibt an derselben
+   Bildschirmstelle (Dialog wird nachgescrollt), damit ein zweiter Tipp auf dieselbe Stelle
+   wieder denselben Song trifft und nicht den nachgerueckten Nachbarn. */
+function moveSetlistEntryStep(index, delta) {
+  const setlist = DATA.setlists.find(s => s.id === currentSetlistId);
+  if (!setlist) return;
+  const to = index + delta;
+  if (to < 0 || to >= setlist.eintraege.length) return;
+  flushSetlistEntryNotizen();
+  const list = $('setlistEntries');
+  const oldRow = list.querySelector('.setlist-entry[data-index="' + index + '"]');
+  const oldTop = oldRow ? oldRow.getBoundingClientRect().top : null;
+  reorderSetlistEntries(currentSetlistId, index, to);
+  renderSetlistDetail();
+  const newRow = list.querySelector('.setlist-entry[data-index="' + to + '"]');
+  if (!newRow) return;
+  if (oldTop !== null) {
+    const scroller = $('setlistDetailDialog');
+    scroller.scrollTop += newRow.getBoundingClientRect().top - oldTop;
+  }
+  newRow.classList.add('moved');
+  setTimeout(() => newRow.classList.remove('moved'), 900);
+  const btn = newRow.querySelector('[data-action="' + (delta < 0 ? 'moveUp' : 'moveDown') + '"]');
+  if (btn && !btn.disabled) btn.focus({ preventScroll: true });
+}
 
 /* spec/02 §3.3 — Reihenfolge per Drag & Drop (Pointer Events, touch- und maustauglich) */
 $('setlistEntries').addEventListener('pointerdown', (e) => {
@@ -3241,6 +3472,7 @@ $('importMergeBtn').addEventListener('click', () => {
 const STAGE = {
   ids: [],            // Song-IDs in Reihenfolge
   keys: [],           // Tonart je Position (aus der Setlist), gleiche Laenge wie ids
+  notes: [],          // spec/17 §3 — Eintragsnotiz je Position, gleiche Laenge wie ids
   index: 0,
   fromSetlist: false,
   setlistId: null,    // spec/06 §2 — fuer Historien-Eintrag, nur gesetzt wenn fromSetlist
@@ -3530,23 +3762,25 @@ function clampFontSize(v) { return Math.min(3.0, Math.max(0.8, Math.round(v * 10
 function startSetlistStage(setlistId, index) {
   const setlist = DATA.setlists.find(s => s.id === setlistId);
   if (!setlist) return;
-  const ids = [], keys = [];
+  const ids = [], keys = [], notes = [];
   setlist.eintraege.forEach(entry => {
     const song = DATA.songs.find(s => s.id === entry.songId);
     if (!song) return;                    // Songs im Papierkorb ueberspringen
     ids.push(song.id);
     keys.push(entry.tonartAbweichend || song.tonartWir || '');
+    notes.push(entry.notiz || '');        // spec/17 §3 — parallel zu ids/keys
   });
   if (ids.length === 0) { alert('Diese Setlist enthält keine spielbaren Songs.'); return; }
   // Index auf die bereinigte Liste umrechnen
   const wantedId = setlist.eintraege[index] ? setlist.eintraege[index].songId : null;
   const start = Math.max(0, ids.indexOf(wantedId));
-  openStage(ids, start, true, keys, setlistId);
+  openStage(ids, start, true, keys, setlistId, notes);
 }
 
-function openStage(ids, index, fromSetlist, keys, setlistId) {
+function openStage(ids, index, fromSetlist, keys, setlistId, notes) {
   STAGE.ids = ids;
   STAGE.keys = keys || [];
+  STAGE.notes = (fromSetlist && notes) ? notes : [];   // spec/17 §3 — fluechtig, nie gespeichert
   STAGE.index = index || 0;
   STAGE.fromSetlist = !!fromSetlist;
   STAGE.setlistId = fromSetlist ? (setlistId || null) : null;
@@ -3661,14 +3895,40 @@ function stageChordLineHtml(line) {
 /* Nur den Textbereich neu aufbauen — ohne Scrollposition und Leisten anzufassen */
 function stageFillBody(song) {
   const body = $('stageBody');
+  let html;
   if (song.body && song.body.trim()) {
-    body.innerHTML = stageBodyHtml(stageProcessedBody(song));
+    html = stageBodyHtml(stageProcessedBody(song));
   } else {
-    body.innerHTML = '<div id="stageEmpty">Für diesen Song ist kein Text hinterlegt.' +
+    html = '<div id="stageEmpty">Für diesen Song ist kein Text hinterlegt.' +
       (isSafeUrl(song.quelleUrl)
         ? ' <button type="button" id="stageLinkBtn">Chords-Link öffnen</button>'
         : '') + '</div>';
   }
+  body.innerHTML = stageNoteHtml() + html + stageNextHtml();   /* spec/17 §3 */
+}
+
+/* spec/17 §3 — Notiz des aktuellen Setlist-Eintrags, als Kasten ueber dem Liedtext.
+   Steht ausserhalb der Liedzeilen: Umbruch, Transponieren und Akkord-Antippen sehen sie nie. */
+function stageNoteHtml() {
+  if (!STAGE.fromSetlist) return '';
+  const note = (STAGE.notes && STAGE.notes[STAGE.index]) || '';
+  return note ? '<div class="stage-note">📝 ' + esc(note) + '</div>' : '';
+}
+
+/* spec/17 §3 — "Als Nächstes" am Textende; antippbar = stageGoto(1). Letzter Song: Ende. */
+function stageNextHtml() {
+  if (!STAGE.fromSetlist) return '';
+  const n = STAGE.index + 1;
+  if (n >= STAGE.ids.length) return '<div class="stage-next ende">Ende der Setlist</div>';
+  const next = DATA.songs.find(s => s.id === STAGE.ids[n]);
+  if (!next) return '';
+  const tonart = (STAGE.keys && STAGE.keys[n]) || next.tonartWir || next.tonartOriginal || '';
+  const note = (STAGE.notes && STAGE.notes[n]) || '';
+  return '<div class="stage-next" data-stage-next role="button" tabindex="0">' +
+    '<span class="lbl">Als Nächstes · ' + (n + 1) + '/' + STAGE.ids.length + '</span>' +
+    '<span class="tt">' + esc(next.titel || '(ohne Titel)') + (tonart ? ' · ' + esc(tonart) : '') + '</span>' +
+    (note ? '<span class="nn">📝 ' + esc(note) + '</span>' : '') +
+  '</div>';
 }
 
 function updateStageTempoLabel(tempo) {
@@ -3884,6 +4144,7 @@ $('stageBody').addEventListener('click', (e) => {
   }
   const tok = e.target.closest('.chordtok');
   if (tok) { openChordDialog(tok.dataset.chord); return; }
+  if (e.target.closest('[data-stage-next]')) { stageGoto(1); return; }   /* spec/17 §3 */
   showStageBars();
 });
 
@@ -3892,6 +4153,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeStage(); }
   else if (e.key === 'ArrowRight' && STAGE.fromSetlist) { stageGoto(1); }
   else if (e.key === 'ArrowLeft' && STAGE.fromSetlist) { stageGoto(-1); }
+  else if (e.key === 'Enter' && e.target.closest && e.target.closest('[data-stage-next]')) { stageGoto(1); }   /* spec/17 §3 */
   else if (e.key === ' ') { e.preventDefault(); STAGE.running ? stopStageScroll() : startStageScroll(); }
 });
 
