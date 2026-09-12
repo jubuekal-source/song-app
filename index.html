@@ -144,9 +144,51 @@ header.plain .icon-btn { background: none; border: 1px solid var(--border); }
 }
 .header-actions input[type=search] { flex: 1 1 160px; min-width: 120px; }
 /* spec/12 §3 — am Handy die Suche auf eine eigene Zeile, damit die drei Knoepfe darunter
-   in EINE Zeile passen (sonst rutscht "Setlists" allein in eine dritte Zeile). */
+   in EINE Zeile passen (sonst rutscht "Setlists" allein in eine dritte Zeile).
+   spec/23 §3 — gilt jetzt fuer die Huelle .search-wrap statt fuer das Feld selbst. */
 @media (max-width: 520px) {
-  .header-actions input[type=search] { flex: 1 1 100%; order: -1; }
+  .header-actions .search-wrap { flex: 1 1 100%; order: -1; }
+}
+
+/* spec/23 §3 — Suchfeld mit Lupe links und Loeschkreuz rechts, beide IM Feld.
+   Das Feld selbst behaelt seine Flaechen-/Glasoptik aus den Kopf-Regeln oben; die Icons
+   liegen darueber und erben per currentColor dessen Textfarbe. */
+.search-wrap { position: relative; display: flex; align-items: center; flex: 1 1 160px; min-width: 120px; }
+.search-wrap input[type=search] {
+  flex: 1 1 auto; min-width: 0;
+  padding-left: 2.1rem; padding-right: 2.3rem;
+  -webkit-appearance: none; appearance: none;   /* Safaris eigenes Kreuz weg, sonst zwei */
+}
+.search-wrap input[type=search]::-webkit-search-cancel-button { -webkit-appearance: none; display: none; }
+/* z-index ist Pflicht, nicht Deko: das Suchfeld traegt im Motiv-Kopf backdrop-filter und
+   malt dadurch ueber frueher im DOM stehende Geschwister — ohne z-index lag die Lupe
+   hinter dem Glas und war praktisch unsichtbar. */
+.search-ico {
+  position: absolute; left: .6rem; z-index: 2; pointer-events: none; opacity: .8;
+  color: var(--text-muted);
+}
+header.gross:not(.plain) .search-ico { color: #fff; opacity: .85; }
+#searchClear {
+  position: absolute; right: .25rem; z-index: 2;
+  min-width: 30px; min-height: 30px; width: 30px; height: 30px; padding: 0;
+  border: none; border-radius: 50%; background: none;
+  color: var(--text-muted); font-size: .95rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+header.gross:not(.plain) #searchClear { color: #fff; }
+
+/* spec/23 §1 — einheitliche Icon-Farbe im Kopfbereich. Warmes Off-White traegt auf dem
+   Lagerfeuer-Motiv; im Preset "Schlicht" faellt es auf die normale Textfarbe zurueck. */
+.icon-btn svg, .hdr-ico svg { display: block; }
+.brand-actions .icon-btn { color: var(--hdr-icon, #fff7ec); }
+header.plain .brand-actions .icon-btn { color: var(--text); }
+/* spec/23 §1 — die Icons in der Theme-Auswahl (Einstellungen) sind dieselben SVGs */
+.seg-group button svg { vertical-align: -3px; margin-right: .25rem; }
+
+/* spec/23 §4 — Zaehlerzeile unter dem Kopf */
+#songCounter {
+  padding: .45rem 1rem .1rem; max-width: 900px; margin: 0 auto;
+  font-size: .82rem; color: var(--text-muted);
 }
 /* spec/12 §3 — Farbauswahl fuer den Kopfbereich (Einstellungen) */
 .hdr-swatches { display: flex; gap: .5rem; flex-wrap: wrap; margin: .1rem 0 .4rem; }
@@ -329,13 +371,24 @@ main { padding: 1rem; max-width: 900px; margin: 0 auto; }
   font-family: ui-monospace, "Courier New", monospace;
   -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
 }
-.card-controls { display: flex; align-items: center; gap: .2rem; }
+/* spec/24 §1 — die Zeile traegt jetzt 5 Sterne + ♥ + 🏷 + 🗑 + ⋮. Sterne minimal kleiner und
+   Umbruch erlaubt, damit das auf einer 280-px-Karte in eine Zeile passt und auf noch
+   schmaleren Karten sauber umbricht statt ueberzulaufen. */
+.card-controls { display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; }
 .stars { display: flex; }
 .stars .star, .card-controls .fav {
-  all: unset; cursor: pointer; font-size: 1.15rem; padding: .2rem; color: var(--star);
-  min-width: 32px; min-height: 32px; text-align: center; box-sizing: border-box;
+  all: unset; cursor: pointer; font-size: 1.05rem; padding: .15rem; color: var(--star);
+  min-width: 30px; min-height: 30px; text-align: center; box-sizing: border-box;
 }
 .fav.active { color: var(--danger); }
+/* spec/24 §1 — 🏷 und 🗑 in der Karte, optisch zurueckhaltend wie Stern und Herz */
+.card-act {
+  all: unset; cursor: pointer; padding: .15rem;
+  min-width: 30px; min-height: 30px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-muted); opacity: .85;
+}
+.card-act-del { color: var(--danger); }
 details.menu { position: relative; margin-left: auto; }
 details.menu summary { list-style: none; cursor: pointer; padding: .3rem .6rem; border-radius: 8px; }
 details.menu summary::-webkit-details-marker { display: none; }
@@ -382,6 +435,18 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 }
 .tag-manage-row input[type=text] { flex: 1 1 100px; }
 .tag-manage-row input[type=color] { width: 44px; padding: 0; flex: 0 0 auto; }
+/* spec/24 §4 — Pfeile zum Umsortieren, schmal gehalten damit die Zeile am Handy passt.
+   Die zweite Zeile (Gruppe + Loeschen) bricht ueber .tag-row-2 sauber um. */
+.tag-move { display: flex; gap: .2rem; flex: 0 0 auto; }
+.tag-move button { min-width: 34px; min-height: 34px; padding: 0 .2rem; font-size: .85rem; }
+.tag-move button:disabled { opacity: .35; }
+.tag-row-2 { display: flex; gap: .5rem; align-items: center; width: 100%; }
+.tag-row-2 input[type=text] { flex: 1 1 80px; }
+/* spec/24 §3 — Eingabezeile im Schnell-Tags-Dialog */
+.qt-new { display: flex; gap: .4rem; align-items: center; margin-top: .2rem; }
+.qt-new input { flex: 1 1 auto; min-width: 0; }
+.qt-new button { flex: 0 0 auto; min-width: 44px; font-size: 1.2rem; }
+#qt_tagCheckboxes { margin: .6rem 0 .4rem; }
 
 .warning { color: var(--danger); font-size: .9rem; }
 .body-tools { margin: -.4rem 0 .7rem; display: flex; gap: .4rem; flex-wrap: wrap; }
@@ -434,7 +499,11 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   position: absolute; inset: 0; overflow: auto; overflow-x: auto;
   white-space: pre; font-family: ui-monospace, "Courier New", monospace;
   line-height: 1.4; margin: 0;
-  padding: calc(env(safe-area-inset-top) + .35rem) .5rem 45vh .5rem;
+  /* spec/23 §5 — rund drei Zeilen Luft oben. Grund: #stageHead liegt als absolute Leiste
+     UEBER dem Text und verdeckte die ersten Zeilen, bis die Leisten automatisch ausblenden.
+     Bewusst ueber Polster geloest und nicht ueber Leerzeilen im Songtext — das haette die
+     Songdaten selbst veraendert (Export, Suche, Transponieren). */
+  padding: calc(env(safe-area-inset-top) + 3.4rem) .5rem 45vh .5rem;
   -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
 }
 /* spec/04 §3 — Akkordzeilen im Buehnenmodus farblich absetzen */
@@ -543,6 +612,55 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 #sh_qr { margin: .8rem 0; }
 #si_preview { font-size: .9rem; line-height: 1.5; }
 #si_preview ul { margin: .4rem 0 0; padding-left: 1.2rem; }
+
+/* spec/25 §1 — Scroll-Schieber. Die Liste hat keinen eigenen Scroll-Container (gescrollt wird
+   das Fenster), darum position:fixed. --rail-top wird in syncScrollRail() auf die aktuelle
+   Kopfhoehe gesetzt, die ueber die Einstellungen wechseln kann. */
+#scrollRail {
+  position: fixed; right: 0; top: var(--rail-top, 60px); bottom: 12px;
+  width: 26px; z-index: 9;
+  touch-action: none; -webkit-user-select: none; user-select: none;
+  cursor: grab;
+}
+#scrollRail::before {
+  content: ''; position: absolute; right: 9px; top: 0; bottom: 0; width: 4px;
+  border-radius: 2px; background: var(--border); opacity: .55;
+}
+#scrollRail.dragging { cursor: grabbing; }
+#scrollThumb {
+  position: absolute; right: 4px; width: 14px; min-height: 44px;
+  border-radius: 7px; background: var(--text-muted); opacity: .6;
+  border: 2px solid var(--surface); box-sizing: border-box;
+}
+#scrollRail.dragging #scrollThumb { opacity: 1; background: var(--accent); }
+#scrollBubble {
+  position: fixed; right: 40px; z-index: 11;
+  min-width: 58px; padding: .45rem .7rem;
+  border-radius: 12px; background: var(--accent); color: #fff;
+  font-size: 1.6rem; font-weight: 700; line-height: 1.1; text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,.28);
+  pointer-events: none;
+}
+#scrollBubble.pos { font-size: 1rem; }
+
+/* spec/25 §2 — Dublettenprüfung */
+.dup-pair {
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: .6rem; margin-bottom: .6rem;
+}
+.dup-score { font-weight: 600; margin: 0 0 .5rem; }
+.dup-song {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem; flex-wrap: wrap;
+  padding: .4rem 0; border-top: 1px dashed var(--border);
+}
+.dup-song:first-of-type { border-top: none; }
+.dup-song .dup-meta { flex: 1 1 auto; min-width: 0; }
+.dup-song .dup-titel { font-weight: 600; }
+/* schmaler Knopf, damit er am Handy neben den Angaben bleibt statt eine eigene Zeile zu belegen */
+.dup-song button { flex: 0 0 auto; font-size: .82rem; padding: .35rem .6rem; }
+/* spec/13 §5 — vh zuerst, dvh daneben: auf iOS wandert die Adressleiste, dvh fängt das ab */
+#dupScanList { max-height: 60vh; max-height: 60dvh; overflow: auto; }
 </style>
 </head>
 <body>
@@ -552,19 +670,30 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 <header id="appHeader">
   <div class="header-brand" id="headerBrand">
     <h1 id="appTitle">Song-App</h1>
+    <!-- spec/23 §1 — alle Kopf-Icons sind Inline-SVG mit currentColor: gleiche Groesse,
+         gleiche Farbe. Emojis (🌙 ⚙ 🎵) brachten eigene Farben und eigene Metrik mit. -->
     <div class="brand-actions">
-      <button type="button" class="icon-btn" id="btnTheme" title="Theme wechseln" aria-label="Theme wechseln">◐</button>
-      <button type="button" class="icon-btn" id="btnSettings" title="Einstellungen" aria-label="Einstellungen">⚙<span id="settingsBadge" class="badge-dot" hidden></span></button>
+      <button type="button" class="icon-btn" id="btnTheme" title="Theme wechseln" aria-label="Theme wechseln"></button>
+      <button type="button" class="icon-btn" id="btnSettings" title="Einstellungen" aria-label="Einstellungen"><span id="settingsIcon" class="hdr-ico"></span><span id="settingsBadge" class="badge-dot" hidden></span></button>
     </div>
   </div>
   <div class="header-actions">
-    <button type="button" id="btnNewSong" class="primary">+ Song</button>
-    <input type="search" id="searchInput" placeholder="Suche…" aria-label="Songs durchsuchen">
+    <!-- spec/23 §2 — kein .primary mehr: alle drei Knoepfe gleich transparent -->
+    <button type="button" id="btnNewSong">+ Song</button>
+    <!-- spec/23 §3 — Lupe links, Loeschkreuz rechts, beide IM Feld -->
+    <div class="search-wrap">
+      <svg class="search-ico" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="8.6" cy="8.6" r="5.4" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12.6 12.6 17 17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <input type="search" id="searchInput" placeholder="Songs suchen…" aria-label="Songs durchsuchen">
+      <button type="button" id="searchClear" aria-label="Suche löschen" title="Suche löschen" hidden>✕</button>
+    </div>
     <!-- spec/21 §4 — Trichter statt Retorte, currentColor uebernimmt Knopf-/Aktiv-Farbe automatisch -->
     <button type="button" id="btnFilter" title="Filter &amp; Sortierung" aria-label="Filter und Sortierung"><svg class="filter-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M2.5 3.5h15L12 10.8v5.2l-4 1.8v-7z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg> Filter<span id="filterCount"></span></button>
-    <button type="button" id="btnSetlists" title="Setlists">🎵 Setlists</button>
+    <button type="button" id="btnSetlists" title="Setlists"><svg class="filter-icon" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M7.5 14.2V4.4l7-1.6v9.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/><circle cx="5.7" cy="14.6" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12.7" cy="12.8" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/></svg> Setlists</button>
   </div>
 </header>
+
+<!-- spec/23 §4 — Mini-Dashboard: wie viele Songs sind da, wie viele zeigt der Filter -->
+<div id="songCounter" hidden></div>
 
 <!-- spec/13 §1 — Hinweis auf den Startbildschirm-Modus, nur im Browser sichtbar -->
 <div id="installHint" hidden>
@@ -636,10 +765,11 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <!-- spec/14 §1 — ausblendbar, falls der Name schon im Kopfbild steht -->
     <label class="settings-check"><input type="checkbox" id="f_titelZeigen"> Namen im Kopfbereich anzeigen</label>
 
+    <!-- spec/23 §1 — Icon + Beschriftung setzt syncThemeUI() aus denselben SVGs wie im Kopf -->
     <div class="seg-group" id="themeSeg">
-      <button type="button" data-theme-choice="hell">☀ Hell</button>
-      <button type="button" data-theme-choice="dunkel">🌙 Dunkel</button>
-      <button type="button" data-theme-choice="system">◐ System</button>
+      <button type="button" data-theme-choice="hell">Hell</button>
+      <button type="button" data-theme-choice="dunkel">Dunkel</button>
+      <button type="button" data-theme-choice="system">System</button>
     </div>
 
     <!-- spec/13 §2 — Höhe des Kopfbereichs, gilt für Farbe wie für Bild -->
@@ -677,6 +807,19 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <h3>Verwalten</h3>
     <button type="button" class="settings-row" id="btnTags"><span class="settings-row-icon">🏷</span><span class="settings-row-label">Tags verwalten</span></button>
     <button type="button" class="settings-row" id="btnTrash"><span class="settings-row-icon">🗑</span><span class="settings-row-label" id="btnTrashLabel">Papierkorb</span></button>
+  </div>
+
+  <!-- spec/23 §6 — destruktivster Knopf der App, deshalb bewusst nur hier und zweistufig -->
+  <div class="settings-section">
+    <h3>Aufräumen</h3>
+    <!-- spec/25 §2 — Vorschlagsliste, loescht nie von selbst -->
+    <button type="button" class="settings-row" id="btnDubletten"><span class="settings-row-icon" id="btnDublettenIcon"></span><span class="settings-row-label">Dubletten suchen</span></button>
+    <p class="settings-backup">Vergleicht die hinterlegten Songtexte miteinander und schlägt
+      Paare vor, die sich stark ähneln. Gelöscht wird nichts von selbst.</p>
+    <button type="button" class="danger" id="btnAlleSongsLoeschen">Alle Songs löschen</button>
+    <p class="settings-backup">Verschiebt <strong>alle</strong> Songs in den Papierkorb — Setlists,
+      Tags, Historie und Einstellungen bleiben. 30 Tage lang wiederherstellbar; endgültig
+      entfernen lässt sich alles im Papierkorb.</p>
   </div>
 
   <!-- spec/16 §5 — Offline-Bereitschaft: Status und Notausgang -->
@@ -897,6 +1040,8 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   <div id="trashList"></div>
   <p class="hint">Einträge werden nach 30 Tagen automatisch endgültig gelöscht.</p>
   <div class="dialog-actions">
+    <!-- spec/23 §6 — zweiter Schritt zur wirklich leeren App -->
+    <button type="button" class="danger" id="trashPurgeBtn">Papierkorb endgültig leeren</button>
     <button type="button" id="trashCloseBtn">Schließen</button>
   </div>
 </dialog>
@@ -905,8 +1050,29 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 <dialog id="tagsDialog">
   <h2>Tags verwalten</h2>
   <div id="tagsManagerList"></div>
+  <!-- spec/24 §4 — nachträglich an den Standardsatz kommen, ohne Erststart -->
+  <p class="hint">Die Reihenfolge hier gilt überall: im Filter, im Song-Formular und
+    bei den Schnell-Tags.</p>
   <div class="dialog-actions">
+    <button type="button" id="tagsStandardBtn">Standard-Tags anlegen</button>
     <button type="button" id="tagsCloseBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/24 §3 — Schnell-Tags: Tags ändern ohne den Weg über Bearbeiten + Scrollen -->
+<dialog id="quickTagsDialog">
+  <h2>Tags</h2>
+  <p class="card-sub" id="qt_songTitel"></p>
+  <div id="qt_tagCheckboxes"></div>
+  <p class="hint" id="qt_leerHinweis" hidden>Noch keine Tags. Unten einen eintragen — oder in
+    den Einstellungen unter „Tags verwalten" den Standardsatz anlegen.</p>
+  <label class="settings-label" for="qt_neuerTag">Neuen Tag anlegen und zuweisen</label>
+  <div class="qt-new">
+    <input type="text" id="qt_neuerTag" maxlength="40" placeholder="z. B. Taufe">
+    <button type="button" id="qt_neuerTagBtn" aria-label="Tag anlegen">+</button>
+  </div>
+  <div class="dialog-actions">
+    <button type="button" id="qt_closeBtn">Fertig</button>
   </div>
 </dialog>
 
@@ -1064,6 +1230,22 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   </div>
 </dialog>
 
+<!-- spec/25 §2.5 — Ergebnis der Dublettenprüfung -->
+<dialog id="dupScanDialog">
+  <h2>Dubletten</h2>
+  <p class="hint" id="dupScanKopf"></p>
+  <div id="dupScanList"></div>
+  <div class="dialog-actions">
+    <button type="button" id="dupScanCloseBtn">Schließen</button>
+  </div>
+</dialog>
+
+<!-- spec/25 §1 — Scroll-Schieber, liegt ausserhalb von <main>, weil er am Fenster haengt -->
+<div id="scrollRail" hidden aria-hidden="true">
+  <div id="scrollThumb"></div>
+</div>
+<div id="scrollBubble" hidden aria-hidden="true"></div>
+
 <script>
 /* ============================================================
    Song-App — spec/01 Grundgerüst
@@ -1073,7 +1255,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.5';
+const APP_VERSION = '1.0.8';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -1091,6 +1273,36 @@ const TAG_PALETTE = ['#4c7dbb', '#e0a458', '#7a9e7e', '#8f8fb0', '#c26b5a', '#d4
 
 /* Kurzform document.getElementById */
 function $(id) { return document.getElementById(id); }
+
+/* spec/23 §1 — Icons als Inline-SVG statt Emoji/Schriftzeichen. Grund: ☀ und ◐ sind
+   monochrome Glyphen (duenn, erben die Textfarbe), 🌙 und ⚙ waren teils Emoji mit eigenen
+   Farben und eigener Metrik — daher wirkten sie unterschiedlich gross und unterschiedlich
+   gefaerbt. Ueber currentColor sind jetzt alle Kopf-Icons exakt gleich gross und gleich farbig. */
+function svgIco(inner, size) {
+  const s = size || 20;
+  return '<svg viewBox="0 0 20 20" width="' + s + '" height="' + s + '" aria-hidden="true">' + inner + '</svg>';
+}
+const ICO_SONNE = svgIco(
+  '<circle cx="10" cy="10" r="3.7" fill="none" stroke="currentColor" stroke-width="1.7"/>' +
+  '<g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">' +
+  '<path d="M10 1.4v2.1M10 16.5v2.1M1.4 10h2.1M16.5 10h2.1M3.9 3.9l1.5 1.5M14.6 14.6l1.5 1.5M16.1 3.9l-1.5 1.5M5.4 14.6l-1.5 1.5"/></g>');
+const ICO_MOND = svgIco(
+  '<path d="M12.6 2.6a7.6 7.6 0 1 0 4.8 9.9 6.1 6.1 0 0 1-4.8-9.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>');
+const ICO_SYSTEM = svgIco(
+  '<circle cx="10" cy="10" r="7.3" fill="none" stroke="currentColor" stroke-width="1.7"/>' +
+  '<path d="M10 2.7a7.3 7.3 0 0 0 0 14.6z" fill="currentColor"/>');
+const ICO_ZAHNRAD = svgIco(
+  '<circle cx="10" cy="10" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/>' +
+  '<path d="M10 1.7l1.3 2.2 2.5-.5.4 2.5 2.2 1.3-1.4 2.1 1.4 2.1-2.2 1.3-.4 2.5-2.5-.5L10 18.3l-1.3-2.2-2.5.5-.4-2.5-2.2-1.3 1.4-2.1-1.4-2.1 2.2-1.3.4-2.5 2.5.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>');
+
+/* spec/24 §1 — dieselbe Begruendung wie oben, jetzt fuer die beiden Karten-Knoepfe:
+   🏷 und 🗑 waren Emoji und haetten je Geraet ihre eigene Farbe mitgebracht. */
+const ICO_TAG = svgIco(
+  '<path d="M10.4 2.6H17v6.6l-7.8 7.8a1.4 1.4 0 0 1-2 0L2.6 12.4a1.4 1.4 0 0 1 0-2z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>' +
+  '<circle cx="13.4" cy="6.2" r="1.3" fill="currentColor"/>', 17);
+const ICO_PAPIERKORB = svgIco(
+  '<path d="M3.4 5.6h13.2M8 3.2h4M5.6 5.6l.8 11.2h7.2l.8-11.2M8.4 8.4v5.6M11.6 8.4v5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>', 17);
+
 
 /* spec/01 §3 — sichere UUID auch ohne crypto.randomUUID (z. B. altes file://-Setup) */
 function uuid() {
@@ -1377,12 +1589,22 @@ function purgeFromTrash(entryId) {
   const label = entry.typ === 'song' ? entry.datensatz.titel : entry.datensatz.name;
   if (!confirm('"' + (label || '(ohne Titel)') + '" endgültig löschen? Das lässt sich nicht rückgängig machen.')) return;
   DATA.papierkorb = DATA.papierkorb.filter(e => e.id !== entryId);
-  /* spec/00 §3.7 — Kaskaden greifen erst beim endgültigen Löschen */
+  /* spec/00 §3.7 — Kaskaden greifen erst beim endgültigen Löschen.
+     spec/06 §5 — Historien-Einträge behalten einen Klartext-Snapshot, sonst verliert der
+     CCLI-Report nachträglich gelöschte Songs. Beides steckt in trashKaskade() (spec/23 §6). */
+  trashKaskade(entry);
+  commit();
+  renderTrash();
+  if (currentSetlistId) renderSetlistDetail();
+}
+
+/* spec/23 §6 — Kaskade beim endgueltigen Loeschen, aus purgeFromTrash herausgezogen, damit
+   "Papierkorb endgueltig leeren" genau dieselben Regeln anwendet und nicht eine zweite,
+   abweichende Fassung derselben Logik entsteht. */
+function trashKaskade(entry) {
   if (entry.typ === 'song') {
     const songId = entry.datensatz.id;
     DATA.setlists.forEach(sl => { sl.eintraege = sl.eintraege.filter(en => en.songId !== songId); });
-    /* spec/06 §5 — Historien-Eintraege bleiben erhalten, aber mit Klartext-Snapshot,
-       sonst verliert der CCLI-Report nachtraeglich geloeschte Songs. */
     DATA.historie.forEach(h => {
       if (h.songId === songId) {
         h.titelSnapshot = entry.datensatz.titel;
@@ -1394,6 +1616,38 @@ function purgeFromTrash(entryId) {
     const setlistId = entry.datensatz.id;
     DATA.historie.forEach(h => { if (h.setlistId === setlistId) h.setlistId = null; });
   }
+}
+
+/* spec/23 §6 — alle Songs in den Papierkorb. Bewusst NICHT endgueltig loeschen: die bindende
+   Projektentscheidung "Loeschen laeuft immer ueber den Papierkorb" gilt auch hier. Zwei Stufen
+   (Wort tippen, dann optional Papierkorb leeren) statt einer unumkehrbaren Aktion. */
+function alleSongsInPapierkorb() {
+  const n = DATA.songs.length;
+  if (n === 0) { alert('Es sind keine Songs vorhanden.'); return; }
+  if (!confirm('Alle ' + n + ' Songs in den Papierkorb verschieben?\n\n'
+    + 'Setlists, Tags, Historie und Einstellungen bleiben erhalten.\n'
+    + 'Tipp: vorher exportieren (Einstellungen → Daten → Export).')) return;
+  const wort = prompt('Zur Sicherheit: bitte LÖSCHEN eintippen.');
+  if (wort === null) return;
+  const norm = String(wort).trim().toUpperCase().replace(/Ö/g, 'OE');
+  if (norm !== 'LOESCHEN') { alert('Nicht gelöscht — das Wort stimmte nicht.'); return; }
+  const jetzt = nowIso();
+  DATA.songs.forEach(song => {
+    DATA.papierkorb.push({ id: uuid(), typ: 'song', datensatz: song, geloeschtAm: jetzt });
+  });
+  DATA.songs = [];
+  activeTagFilter = null;
+  commit();
+  alert(n + ' Songs liegen jetzt im Papierkorb.');
+}
+
+/* spec/23 §6 — Papierkorb in einem Zug endgueltig leeren, mit denselben Kaskaden */
+function papierkorbLeeren() {
+  const n = DATA.papierkorb.length;
+  if (n === 0) { alert('Der Papierkorb ist leer.'); return; }
+  if (!confirm(n + ' Einträge endgültig löschen? Das lässt sich nicht rückgängig machen.')) return;
+  DATA.papierkorb.forEach(trashKaskade);
+  DATA.papierkorb = [];
   commit();
   renderTrash();
   if (currentSetlistId) renderSetlistDetail();
@@ -1433,13 +1687,36 @@ function updateTag(id, changes) {
   renderTagsManager();
 }
 
+/* spec/24 §4 — Warnung nennt die Zahl der betroffenen Songs. Ohne sie ist nicht abzuschaetzen,
+   wie viel Zuordnungsarbeit ein Loeschen vernichtet. */
+function tagNutzung(id) {
+  return DATA.songs.filter(s => s.tagIds.includes(id)).length;
+}
+
 function deleteTag(id) {
   const tag = DATA.tags.find(t => t.id === id);
   if (!tag) return;
-  if (!confirm('Tag "' + tag.name + '" wirklich löschen? Wird bei allen Songs entfernt.')) return;
+  const n = tagNutzung(id);
+  const zusatz = n === 0
+    ? 'Er ist bei keinem Song vergeben.'
+    : (n === 1
+      ? 'Er ist bei 1 Song vergeben und wird dort entfernt.'
+      : 'Er ist bei ' + n + ' Songs vergeben und wird dort überall entfernt.');
+  if (!confirm('Tag "' + tag.name + '" löschen?\n\n' + zusatz)) return;
   DATA.tags = DATA.tags.filter(t => t.id !== id);
   DATA.songs.forEach(s => { s.tagIds = s.tagIds.filter(tid => tid !== id); });
   if (activeTagFilter === id) activeTagFilter = null;
+  commit();
+  renderTagsManager();
+}
+
+/* spec/24 §4 — Reihenfolge im Array verschieben, +1/-1 */
+function moveTag(id, richtung) {
+  const i = DATA.tags.findIndex(t => t.id === id);
+  const j = i + richtung;
+  if (i === -1 || j < 0 || j >= DATA.tags.length) return;
+  const [tag] = DATA.tags.splice(i, 1);
+  DATA.tags.splice(j, 0, tag);
   commit();
   renderTagsManager();
 }
@@ -1451,17 +1728,25 @@ function defaultSetlist() {
 }
 
 /* ---------- Demo-Paket (spec/10 §1) ----------
-   Laedt beim allerersten Start (echt leerer localStorage) 4 gemeinfreie Songs, 3 Tags und
+   Laedt beim allerersten Start (echt leerer localStorage) 4 gemeinfreie Songs, den
+   Standard-Tag-Satz aus spec/24 §4 und
    eine als Beispiel gekennzeichnete Setlist, damit die App nicht leer wirkt und die
    Kernfunktionen (Rendern, Transponieren, Buehnenmodus, Setlist mit Notizen/abweichender
    Tonart) direkt sichtbar sind. Lizenzstatus recherchiert, nicht geraten: Text UND Melodie
    sind bei allen vier Songs gemeinfrei (Autor/Komponist über 70 Jahre tot bzw. anonymes
    Volkslied). Quellen je Song in quelleUrl/quelleNotiz. */
 
-const DEMO_TAGS = [
-  { name: 'Lagerfeuer' },
-  { name: 'Weihnachten' },
-  { name: 'Bekannt' }
+/* spec/24 §4 — Standard-Tag-Satz, ersetzt die frueheren DEMO_TAGS. Von Marco am 12.09.2026
+   so entschieden: bewusst kurz gehalten, Symbol vor dem Wort (auf einem Chip mit .75rem
+   Schrift schneller erkennbar als das Wort allein). Feste Farben statt randomTagColor(),
+   damit der Satz bei jedem Nutzer gleich aussieht. */
+const STANDARD_TAGS = [
+  { name: '🔥 Lagerfeuer',  farbe: '#d2601a' },
+  { name: '🇩🇪 Deutsch',     farbe: '#3d6fb4' },
+  { name: '🧒 Kinderlieder', farbe: '#8aad2e' },
+  { name: '🕊 Ruhig',        farbe: '#2f9c8f' },
+  { name: '✝ Christlich',    farbe: '#7c5cbf' },
+  { name: '🎄 Weihnachten',  farbe: '#2e8b57' }
 ];
 
 const DEMO_SONGS_ROH = [
@@ -1469,7 +1754,7 @@ const DEMO_SONGS_ROH = [
     titel: 'Stille Nacht, heilige Nacht',
     interpret: 'Traditional',
     tonartWir: 'D',
-    tags: ['Weihnachten', 'Bekannt'],
+    tags: ['🎄 Weihnachten', '🕊 Ruhig', '✝ Christlich'],
     quelleUrl: 'https://www.e-chords.com/chords/joseph-mohr-franz-gruber/silent-night-stille-nacht',
     quelleNotiz: 'Text: Joseph Mohr († 1848), Melodie: Franz Xaver Gruber († 1863) — gemeinfrei, Demo-Song',
     body: `Strophe 1
@@ -1518,7 +1803,7 @@ Christ, in deiner Geburt!`
     titel: 'Kein schöner Land in dieser Zeit',
     interpret: 'Traditional',
     tonartWir: 'C',
-    tags: ['Lagerfeuer', 'Bekannt'],
+    tags: ['🔥 Lagerfeuer', '🇩🇪 Deutsch'],
     quelleUrl: 'https://guitarsongs.club/song/44665',
     quelleNotiz: 'Text/Melodie: Anton Wilhelm von Zuccalmaglio († 1869), veröffentlicht 1840 — gemeinfrei, Demo-Song',
     body: `Strophe 1
@@ -1553,7 +1838,7 @@ In seiner Güte uns zu behüten ist er bedacht`
     titel: 'Der Mond ist aufgegangen',
     interpret: 'Traditional',
     tonartWir: 'C',
-    tags: ['Lagerfeuer'],
+    tags: ['🕊 Ruhig', '🇩🇪 Deutsch'],
     quelleUrl: 'https://www.e-chords.com/chords/misc-traditional/der-mond-ist-aufgegangen',
     quelleNotiz: 'Text: Matthias Claudius († 1815), Melodie: Johann Abraham Peter Schulz († 1800) — gemeinfrei, Demo-Song. Strophen 1–3 von ursprünglich 7 (die heute gebräuchliche Auswahl).',
     body: `Strophe 1
@@ -1602,7 +1887,7 @@ weil unsre Augen sie nicht sehn.`
     titel: 'O Tannenbaum',
     interpret: 'Traditional',
     tonartWir: 'G',
-    tags: ['Weihnachten', 'Bekannt'],
+    tags: ['🎄 Weihnachten', '🇩🇪 Deutsch'],
     quelleUrl: 'https://www.e-chords.com/chords/misc-traditional/oh-tannenbaum',
     quelleNotiz: 'Text: Ernst Anschütz († 1861), Melodie anonym/älter als 1600 — gemeinfrei, Demo-Song',
     body: `Strophe 1
@@ -1651,8 +1936,8 @@ Dein Kleid will mich was lehren.`
 
 function ladeDemoPaket() {
   const tagMap = {};
-  DEMO_TAGS.forEach(t => {
-    const tag = normalizeTag({ name: t.name });
+  STANDARD_TAGS.forEach(t => {   /* spec/24 §4 */
+    const tag = normalizeTag({ name: t.name, farbe: t.farbe });
     DATA.tags.push(tag);
     tagMap[t.name] = tag.id;
   });
@@ -1939,39 +2224,66 @@ function songCardHtml(song) {
         (songIsStale(song) ? '<div class="card-stale-badge">' + esc(staleBadgeLabel(song)) + '</div>' : '') +
       '</button>' +
       (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
+      /* spec/24 §1 — Tag-Schnellzugriff und Papierkorb direkt in der Karte: beides braucht man
+         beim Aufraeumen dauernd, ueber das Dreipunkt-Menue kostet es je einen Klick mehr.
+         Beide Symbole sind Inline-SVG (ICO_TAG / ICO_PAPIERKORB), nicht Emoji — sonst braechte
+         jedes Geraet seine eigene Emoji-Farbe mit und .card-act-del blieb wirkungslos.
+         spec/24 §2 — dafuer fallen "Buehnenmodus" (deckt der Antipper ab) und "Loeschen"
+         (jetzt der Papierkorb daneben) aus dem Menue heraus. */
       '<div class="card-controls">' +
         '<div class="stars">' + stars + '</div>' +
         '<button type="button" class="fav ' + (song.favorit ? 'active' : '') + '" data-action="fav" data-id="' + esc(song.id) + '" aria-label="Favorit">' + (song.favorit ? '♥' : '♡') + '</button>' +
+        '<button type="button" class="card-act" data-action="quickTags" data-id="' + esc(song.id) + '" aria-label="Tags ändern" title="Tags ändern">' + ICO_TAG + '</button>' +
+        '<button type="button" class="card-act card-act-del" data-action="delete" data-id="' + esc(song.id) + '" aria-label="Löschen" title="Löschen">' + ICO_PAPIERKORB + '</button>' +
         '<details class="menu">' +
           '<summary aria-label="Mehr">⋮</summary>' +
           '<div class="menu-items">' +
-            '<button type="button" data-action="stage" data-id="' + esc(song.id) + '">▶ Bühnenmodus</button>' +
             '<button type="button" data-action="edit" data-id="' + esc(song.id) + '">Bearbeiten</button>' +
             '<button type="button" data-action="addToSetlist" data-id="' + esc(song.id) + '">Zu Setlist hinzufügen</button>' +
-            '<button type="button" data-action="delete" data-id="' + esc(song.id) + '">Löschen</button>' +
           '</div>' +
         '</details>' +
       '</div>' +
     '</article>';
 }
 
+/* spec/23 §4 — Mini-Dashboard: Gesamtzahl, bei aktivem Filter/Suche "x von y".
+   Bewusst eine eigene Funktion, damit der Zaehler nur an einer Stelle formuliert ist. */
+function renderSongCounter(sichtbar, gesamt) {
+  const el = $('songCounter');
+  if (gesamt === 0) { el.hidden = true; el.textContent = ''; return; }
+  const wort = (n) => n + ' Song' + (n === 1 ? '' : 's');
+  el.textContent = (sichtbar === gesamt) ? wort(gesamt) : (sichtbar + ' von ' + wort(gesamt));
+  el.hidden = false;
+}
+
 function renderList() {
   const listEl = $('songList');
   const emptyEl = $('emptyState');
+  syncSearchClear();   /* spec/23 §3 — deckt auch das Zuruecksetzen ueber die Chipzeile ab */
 
   if (DATA.songs.length === 0) {
     listEl.innerHTML = '';
     emptyEl.hidden = false;
+    renderSongCounter(0, 0);
+    zuletztSichtbar = [];               /* spec/25 §1.2 */
+    syncScrollRail();
     return;
   }
   emptyEl.hidden = true;
 
   const visible = getVisibleSongs();
+  renderSongCounter(visible.length, DATA.songs.length);   /* spec/23 §4 */
+  /* spec/25 §1.4 — die gerenderte Reihenfolge merken; der Schieber braucht sie beim Ziehen
+     und soll dafuer nicht bei jedem Pixel neu sortieren. */
+  zuletztSichtbar = visible;
   if (visible.length === 0) {
     listEl.innerHTML = '<p class="no-results">Keine Treffer.</p>';
+    syncScrollRail();
     return;
   }
   listEl.innerHTML = visible.map(songCardHtml).join('');
+  /* Erst nach dem Neuaufbau messen — vorher steht die alte Dokumenthoehe im DOM. */
+  requestAnimationFrame(syncScrollRail);
 }
 
 /* spec/09 §5.2 — Punkt am Zahnrad statt Bannerzeile, Bedingung unveraendert */
@@ -2160,12 +2472,21 @@ function renderTagsManager() {
     el.innerHTML = '<p class="hint">Noch keine Tags.</p>';
     return;
   }
-  el.innerHTML = DATA.tags.map(t => '' +
+  /* spec/24 §4 — zweizeilig plus ▲/▼: die Reihenfolge in DATA.tags ist ueberall die
+     Anzeigereihenfolge (Filter-Panel, Song-Formular, Schnell-Tags), deshalb genuegt
+     Verschieben im Array. */
+  el.innerHTML = DATA.tags.map((t, i) => '' +
     '<div class="tag-manage-row" data-id="' + esc(t.id) + '">' +
-      '<input type="color" value="' + esc(t.farbe) + '" data-field="farbe">' +
-      '<input type="text" value="' + esc(t.name) + '" data-field="name" maxlength="40">' +
-      '<input type="text" value="' + esc(t.gruppe) + '" data-field="gruppe" placeholder="Gruppe" maxlength="40">' +
-      '<button type="button" class="danger" data-action="deleteTag">Löschen</button>' +
+      '<input type="color" value="' + esc(t.farbe) + '" data-field="farbe" aria-label="Farbe">' +
+      '<input type="text" value="' + esc(t.name) + '" data-field="name" maxlength="40" aria-label="Name">' +
+      '<span class="tag-move">' +
+        '<button type="button" data-action="tagUp" aria-label="Nach oben"' + (i === 0 ? ' disabled' : '') + '>▲</button>' +
+        '<button type="button" data-action="tagDown" aria-label="Nach unten"' + (i === DATA.tags.length - 1 ? ' disabled' : '') + '>▼</button>' +
+      '</span>' +
+      '<span class="tag-row-2">' +
+        '<input type="text" value="' + esc(t.gruppe) + '" data-field="gruppe" placeholder="Gruppe" maxlength="40" aria-label="Gruppe">' +
+        '<button type="button" class="danger" data-action="deleteTag">Löschen</button>' +
+      '</span>' +
     '</div>'
   ).join('');
 }
@@ -2439,10 +2760,11 @@ $('songList').addEventListener('click', (e) => {
   if (action === 'open') handleCardOpen(id);
   else if (action === 'star') setBewertung(id, Number(btn.dataset.n));
   else if (action === 'fav') toggleFavorit(id);
-  else if (action === 'stage') { closeCardMenus(); openStage([id], 0); }
+  /* spec/24 §2 — 'stage' entfaellt: kein Aufrufer mehr, der Antipper deckt den Fall ab */
   else if (action === 'edit') { closeCardMenus(); openSongDialog(id); }
   else if (action === 'addToSetlist') { closeCardMenus(); openAddToSetlistDialog(id); }
   else if (action === 'delete') { closeCardMenus(); deleteSong(id); }
+  else if (action === 'quickTags') { closeCardMenus(); openQuickTagsDialog(id); }   /* spec/24 §3 */
   else if (action === 'filterTag') {
     const tagId = btn.dataset.tagid;
     activeTagFilter = (activeTagFilter === tagId) ? null : tagId;
@@ -2897,12 +3219,33 @@ $('btnNewSong').addEventListener('click', () => openSongDialog(null));
 $('emptyNewSongBtn').addEventListener('click', () => openSongDialog(null));
 $('emptyImportBtn').addEventListener('click', () => $('importFileInput').click());
 
-$('searchInput').addEventListener('input', (e) => { searchTerm = e.target.value; renderList(); renderFilterUI(); });
+$('searchInput').addEventListener('input', (e) => {
+  searchTerm = e.target.value;
+  syncSearchClear();   /* spec/23 §3 */
+  renderList(); renderFilterUI();
+});
+
+/* spec/23 §3 — Loeschkreuz direkt im Eingabefeld. Die Chipzeile #activeFilters bleibt
+   unveraendert; sie ist je nach Ansicht verdeckt, deshalb dieses zweite, immer sichtbare X. */
+function syncSearchClear() {
+  $('searchClear').hidden = !$('searchInput').value;
+}
+$('searchClear').addEventListener('click', () => {
+  $('searchInput').value = '';
+  searchTerm = '';
+  syncSearchClear();
+  renderList(); renderFilterUI();
+  $('searchInput').focus();
+});
 
 /* ---------- spec/09 §5.1 — Theme ---------- */
 
-const THEME_ICON = { hell: '☀', dunkel: '🌙', system: '◐' };
+const THEME_ICON = { hell: ICO_SONNE, dunkel: ICO_MOND, system: ICO_SYSTEM };
+const THEME_SEG_LABEL = { hell: 'Hell', dunkel: 'Dunkel', system: 'System' };
 const THEME_CYCLE = { hell: 'dunkel', dunkel: 'system', system: 'hell' };
+
+/* spec/23 §1 — Zahnrad ins eigene <span>, damit der Badge-Punkt daneben unangetastet bleibt */
+$('settingsIcon').innerHTML = ICO_ZAHNRAD;
 
 function applyTheme(theme) {
   if (theme === 'hell' || theme === 'dunkel') document.documentElement.dataset.theme = theme;
@@ -2911,11 +3254,17 @@ function applyTheme(theme) {
 
 function syncThemeUI() {
   const theme = DATA.meta.theme || 'system';
-  $('btnTheme').textContent = THEME_ICON[theme] || '◐';
+  $('btnTheme').innerHTML = THEME_ICON[theme] || ICO_SYSTEM;   /* spec/23 §1 */
   $('btnTheme').title = 'Theme: ' + theme + ' (antippen wechselt)';
   $('btnTheme').setAttribute('aria-label', 'Theme: ' + theme);
   $('themeSeg').querySelectorAll('button').forEach(b => {
     b.classList.toggle('on', b.dataset.themeChoice === theme);
+    /* spec/23 §1 — dieselben SVGs auch in der Theme-Auswahl, nur einmal einsetzen */
+    if (!b.dataset.icoGesetzt) {
+      const c = b.dataset.themeChoice;
+      b.innerHTML = (THEME_ICON[c] || '') + esc(THEME_SEG_LABEL[c] || c);
+      b.dataset.icoGesetzt = '1';
+    }
   });
 }
 
@@ -3307,10 +3656,12 @@ function openFilterPanel() {
   syncFilterResetBtn(); /* spec/21 §3 */
   $('filterBackdrop').hidden = false;
   $('filterPanel').hidden = false;
+  syncScrollRail();   /* spec/25 §1.2 */
 }
 function closeFilterPanel() {
   $('filterBackdrop').hidden = true;
   $('filterPanel').hidden = true;
+  syncScrollRail();   /* spec/25 §1.2 — Schieber war waehrend des Panels ausgeblendet */
 }
 /* spec/21 §1 — Knopf schaltet um, statt nur zu oeffnen */
 $('btnFilter').addEventListener('click', () => {
@@ -3362,7 +3713,11 @@ function openSettingsPanel() {
 }
 function closeSettingsPanel() {
   $('settingsPanel').classList.remove('open');
-  setTimeout(() => { $('settingsBackdrop').hidden = true; $('settingsPanel').hidden = true; }, 220);
+  setTimeout(() => {
+    $('settingsBackdrop').hidden = true;
+    $('settingsPanel').hidden = true;
+    syncScrollRail();   /* spec/25 §1.2 — erst nach der Animation ist die Schublade wirklich zu */
+  }, 220);
 }
 $('btnSettings').addEventListener('click', openSettingsPanel);
 $('settingsClose').addEventListener('click', closeSettingsPanel);
@@ -3394,6 +3749,8 @@ $('btnImport').addEventListener('click', () => $('importFileInput').click());
 $('importFileInput').addEventListener('change', handleImportFileSelected);
 
 $('btnTrash').addEventListener('click', openTrashDialog);
+/* spec/23 §6 — nur hier in den Einstellungen, nie in der Songliste */
+$('btnAlleSongsLoeschen').addEventListener('click', alleSongsInPapierkorb);
 $('btnTags').addEventListener('click', openTagsDialog);
 
 /* Song-Formular */
@@ -3449,6 +3806,7 @@ $('trashList').addEventListener('click', (e) => {
   else if (btn.dataset.action === 'purge') purgeFromTrash(btn.dataset.id);
 });
 $('trashCloseBtn').addEventListener('click', () => $('trashDialog').close());
+$('trashPurgeBtn').addEventListener('click', papierkorbLeeren);   /* spec/23 §6 */
 
 /* Tags */
 $('tagsManagerList').addEventListener('change', (e) => {
@@ -3458,12 +3816,88 @@ $('tagsManagerList').addEventListener('change', (e) => {
   updateTag(row.dataset.id, { [field]: e.target.value });
 });
 $('tagsManagerList').addEventListener('click', (e) => {
-  if (e.target.dataset.action === 'deleteTag') {
-    const row = e.target.closest('.tag-manage-row');
-    if (row) deleteTag(row.dataset.id);
-  }
+  const btn = e.target.closest('[data-action]');
+  const row = e.target.closest('.tag-manage-row');
+  if (!btn || !row) return;
+  const action = btn.dataset.action;
+  if (action === 'deleteTag') deleteTag(row.dataset.id);
+  else if (action === 'tagUp') moveTag(row.dataset.id, -1);      /* spec/24 §4 */
+  else if (action === 'tagDown') moveTag(row.dataset.id, 1);     /* spec/24 §4 */
 });
 $('tagsCloseBtn').addEventListener('click', () => $('tagsDialog').close());
+
+/* spec/24 §4 — Standardsatz nachtraeglich anlegen. getOrCreateTag() vergleicht namensgleich
+   und gross-/kleinschreibungstolerant, legt also nur wirklich Fehlendes an. */
+$('tagsStandardBtn').addEventListener('click', () => {
+  const vorher = DATA.tags.length;
+  STANDARD_TAGS.forEach(t => {
+    const tag = getOrCreateTag(t.name);
+    if (tag && !tag.farbe) tag.farbe = t.farbe;
+  });
+  const neu = DATA.tags.length - vorher;
+  commit();
+  renderTagsManager();
+  alert(neu === 0
+    ? 'Alle Standard-Tags waren schon vorhanden.'
+    : (neu === 1 ? '1 Tag ergänzt.' : neu + ' Tags ergänzt.'));
+});
+
+/* ---------- spec/24 §3 — Schnell-Tags ---------- */
+
+let quickTagsSongId = null;
+
+function renderQuickTags() {
+  const song = DATA.songs.find(s => s.id === quickTagsSongId);
+  if (!song) return;
+  const box = $('qt_tagCheckboxes');
+  $('qt_leerHinweis').hidden = DATA.tags.length > 0;
+  box.innerHTML = DATA.tags.map(t =>
+    '<label class="chip-checkbox" style="--chip-color:' + esc(t.farbe) + '">' +
+      '<input type="checkbox" value="' + esc(t.id) + '" style="width:auto" ' +
+      (song.tagIds.includes(t.id) ? 'checked' : '') + '> ' + esc(t.name) +
+    '</label>'
+  ).join('');
+}
+
+/* Jedes Haekchen speichert sofort — der Dialog hat bewusst keine Abbrechen-Semantik.
+   Beim Durchtaggen vieler Songs waere jede Bestaetigung ein Klick zu viel. */
+function toggleQuickTag(tagId, an) {
+  const song = DATA.songs.find(s => s.id === quickTagsSongId);
+  if (!song) return;
+  if (an && !song.tagIds.includes(tagId)) song.tagIds.push(tagId);
+  if (!an) song.tagIds = song.tagIds.filter(id => id !== tagId);
+  song.geaendertAm = nowIso();
+  commit();   /* rendert die Liste neu, damit die Chips auf der Karte sofort stimmen */
+}
+
+function openQuickTagsDialog(id) {
+  const song = DATA.songs.find(s => s.id === id);
+  if (!song) return;
+  quickTagsSongId = id;
+  $('qt_songTitel').textContent = [song.titel || '(ohne Titel)', song.interpret].filter(Boolean).join(' · ');
+  $('qt_neuerTag').value = '';
+  renderQuickTags();
+  $('quickTagsDialog').showModal();
+}
+
+$('qt_tagCheckboxes').addEventListener('change', (e) => {
+  const cb = e.target.closest('input[type=checkbox]');
+  if (cb) toggleQuickTag(cb.value, cb.checked);
+});
+
+function quickTagAnlegen() {
+  const input = $('qt_neuerTag');
+  const tag = getOrCreateTag(input.value);
+  if (!tag) return;
+  toggleQuickTag(tag.id, true);
+  input.value = '';
+  renderQuickTags();
+}
+$('qt_neuerTagBtn').addEventListener('click', quickTagAnlegen);
+$('qt_neuerTag').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); quickTagAnlegen(); }
+});
+$('qt_closeBtn').addEventListener('click', () => $('quickTagsDialog').close());
 
 /* Setlists (spec/02) */
 $('btnSetlists').addEventListener('click', openSetlistsDialog);
@@ -4030,6 +4464,7 @@ function openStage(ids, index, fromSetlist, keys, setlistId, notes) {
   renderStage();
   requestStageWakeLock();
   showStageBars();
+  syncScrollRail();   /* spec/25 §1.2 — Schieber gehoert nicht ueber den Buehnenmodus */
 }
 
 function closeStage() {
@@ -4039,6 +4474,7 @@ function closeStage() {
   $('stage').hidden = true;
   document.body.style.overflow = '';
   if (STAGE.barsTimer) { clearTimeout(STAGE.barsTimer); STAGE.barsTimer = null; }
+  syncScrollRail();   /* spec/25 §1.2 — Schieber war im Buehnenmodus aus */
 }
 
 function stageIsOpen() { return !$('stage').hidden; }
@@ -5155,11 +5591,324 @@ function registriereServiceWorker() {
 }
 
 /* ============================================================
+   spec/25 §1 — Scroll-Schieber mit Buchstaben-Blase
+   ============================================================ */
+
+let zuletztSichtbar = [];      /* die zuletzt gerenderte Songreihenfolge */
+let railZiehtGerade = false;
+let railBubbleTimer = null;
+
+/* Die Liste scrollt das Fenster, nicht einen eigenen Kasten — alle Masse kommen darum
+   vom Dokument. maxScroll 0 heisst: passt auf einen Bildschirm. */
+function railMasse() {
+  const doc = document.documentElement;
+  const hoehe = Math.max(doc.scrollHeight, document.body.scrollHeight);
+  return { hoehe, sicht: window.innerHeight, max: Math.max(0, hoehe - window.innerHeight) };
+}
+
+/* spec/25 §1.2 — sichtbar nur ueber der Songliste und nur bei wirklich langer Liste */
+function scrollRailNoetig() {
+  if (!$('stage').hidden) return false;
+  if (!$('settingsPanel').hidden) return false;
+  if (!$('filterPanel').hidden) return false;
+  if (document.querySelector('dialog[open]')) return false;
+  if (zuletztSichtbar.length === 0) return false;
+  const m = railMasse();
+  return m.hoehe > m.sicht * 1.5;
+}
+
+function syncScrollRail() {
+  const rail = $('scrollRail');
+  if (!scrollRailNoetig()) {
+    rail.hidden = true;
+    $('scrollBubble').hidden = true;
+    return;
+  }
+  /* Kopfhoehe kann sich aendern (spec/13 §2 gross/kompakt), darum jedes Mal messen. */
+  rail.style.setProperty('--rail-top', Math.round($('appHeader').getBoundingClientRect().bottom) + 'px');
+  rail.hidden = false;
+  const m = railMasse();
+  const railH = rail.clientHeight;
+  const thumb = $('scrollThumb');
+  const thumbH = Math.max(44, Math.round(railH * (m.sicht / m.hoehe)));
+  thumb.style.height = thumbH + 'px';
+  const anteil = m.max > 0 ? Math.min(1, Math.max(0, window.scrollY / m.max)) : 0;
+  thumb.style.top = Math.round(anteil * (railH - thumbH)) + 'px';
+  if (railZiehtGerade) railBubblePositionieren(anteil, thumbH);
+}
+
+function railBubblePositionieren(anteil, thumbH) {
+  const rail = $('scrollRail');
+  const bubble = $('scrollBubble');
+  const railTop = rail.getBoundingClientRect().top;
+  const railH = rail.clientHeight;
+  const mitte = railTop + anteil * (railH - thumbH) + thumbH / 2;
+  const bh = bubble.offsetHeight || 44;
+  const oben = Math.min(window.innerHeight - bh - 8, Math.max(8, mitte - bh / 2));
+  bubble.style.top = Math.round(oben) + 'px';
+}
+
+/* spec/25 §1.4 — Buchstabe nur bei alphabetischer Sortierung, sonst waere er irrefuehrend */
+function railBubbleText(anteil) {
+  const n = zuletztSichtbar.length;
+  if (n === 0) return '';
+  const idx = Math.min(n - 1, Math.max(0, Math.round(anteil * (n - 1))));
+  if (sortMode !== 'titel') return (idx + 1) + ' / ' + n;
+  const norm = suchNorm(zuletztSichtbar[idx].titel || '').trim();
+  const z = norm.charAt(0);
+  return /\p{L}/u.test(z) ? z.toUpperCase() : '#';
+}
+
+function railZuAnteil(clientY) {
+  const rail = $('scrollRail');
+  const r = rail.getBoundingClientRect();
+  const thumbH = $('scrollThumb').offsetHeight || 44;
+  const spanne = r.height - thumbH;
+  if (spanne <= 0) return 0;
+  return Math.min(1, Math.max(0, (clientY - r.top - thumbH / 2) / spanne));
+}
+
+function railSpringe(clientY) {
+  const anteil = railZuAnteil(clientY);
+  const m = railMasse();
+  window.scrollTo(0, anteil * m.max);
+  const bubble = $('scrollBubble');
+  bubble.textContent = railBubbleText(anteil);
+  bubble.classList.toggle('pos', sortMode !== 'titel');
+  bubble.hidden = false;
+  railBubblePositionieren(anteil, $('scrollThumb').offsetHeight || 44);
+  syncScrollRail();
+}
+
+$('scrollRail').addEventListener('pointerdown', (e) => {
+  railZiehtGerade = true;
+  $('scrollRail').classList.add('dragging');
+  if (railBubbleTimer) { clearTimeout(railBubbleTimer); railBubbleTimer = null; }
+  /* Ohne Capture reisst das Ziehen ab, sobald der Finger seitlich von der Schiene rutscht. */
+  try { $('scrollRail').setPointerCapture(e.pointerId); } catch (err) { /* aeltere Browser */ }
+  railSpringe(e.clientY);
+  e.preventDefault();
+});
+$('scrollRail').addEventListener('pointermove', (e) => {
+  if (!railZiehtGerade) return;
+  railSpringe(e.clientY);
+  e.preventDefault();
+});
+function railEnde() {
+  if (!railZiehtGerade) return;
+  railZiehtGerade = false;
+  $('scrollRail').classList.remove('dragging');
+  railBubbleTimer = setTimeout(() => { $('scrollBubble').hidden = true; }, 400);
+}
+$('scrollRail').addEventListener('pointerup', railEnde);
+$('scrollRail').addEventListener('pointercancel', railEnde);
+
+/* Jeder <dialog> liegt im Top-Layer ueber dem Schieber. Statt an jeder der ueber ein Dutzend
+   showModal()-Stellen einzeln nachzuziehen, beobachtet ein MutationObserver das open-Attribut. */
+document.querySelectorAll('dialog').forEach(d => {
+  new MutationObserver(syncScrollRail).observe(d, { attributes: true, attributeFilter: ['open'] });
+});
+
+let railFrame = 0;
+window.addEventListener('scroll', () => {
+  if (railFrame) return;
+  railFrame = requestAnimationFrame(() => { railFrame = 0; syncScrollRail(); });
+}, { passive: true });
+window.addEventListener('resize', syncScrollRail);
+
+/* ============================================================
+   spec/25 §2 — Dublettenprüfung nach Textinhalt
+   ============================================================ */
+
+const DUP_SCHWELLE = 0.75;    /* §2.3 */
+const DUP_MIN_WORTE = 12;     /* darunter ist ein Textvergleich reines Rauschen */
+const DUP_MAX_ANZEIGE = 100;  /* so viele Paare zeigt der Dialog hoechstens auf einmal */
+
+/* §2.2 — Vergleichsgrundlage. Bewusst NICHT songLyricsSearchText(): das laesst
+   Abschnittsmarken stehen, und die lauten in jedem Song gleich. */
+function dupTextWorte(song) {
+  if (!song || !song.body) return [];
+  const zeilen = String(song.body).split('\n');
+  const behalten = [];
+  for (const zeile of zeilen) {
+    const t = zeile.trim();
+    if (!t) continue;
+    if (/^\{[^}]*\}$/.test(t)) continue;      // ChordPro-Direktive
+    if (isSectionLine(t)) continue;
+    if (isChordLine(t)) continue;
+    behalten.push(t.replace(/\[[^\]]*\]/g, ' '));   // Inline-Akkorde raus
+  }
+  return suchNorm(behalten.join(' ')).replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(/\s+/).filter(Boolean);
+}
+
+function dupShingles(worte) {
+  const s = new Set();
+  for (let i = 0; i + 2 < worte.length; i++) s.add(worte[i] + ' ' + worte[i + 1] + ' ' + worte[i + 2]);
+  return s;
+}
+
+function dupJaccard(a, b) {
+  if (!a.size || !b.size) return 0;
+  const klein = a.size <= b.size ? a : b;
+  const gross = a.size <= b.size ? b : a;
+  let schnitt = 0;
+  for (const x of klein) if (gross.has(x)) schnitt++;
+  return schnitt / (a.size + b.size - schnitt);
+}
+
+/* §2.4 — liefert { paare, songs, vergleiche, ms }. Keine behauptete Laufzeit, gemessen. */
+function findeDubletten() {
+  const t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  const daten = DATA.songs.map(s => {
+    const w = dupTextWorte(s);
+    return {
+      song: s,
+      sh: w.length >= DUP_MIN_WORTE ? dupShingles(w) : null,
+      t: dublettenNorm(s.titel),
+      i: dublettenNorm(s.interpret)
+    };
+  });
+  const paare = [];
+  let vergleiche = 0;
+  for (let a = 0; a < daten.length; a++) {
+    for (let b = a + 1; b < daten.length; b++) {
+      vergleiche++;
+      const A = daten[a], B = daten[b];
+      if (A.sh && B.sh) {
+        /* Jaccard ist hoechstens kleinere/groessere Menge — ist das schon unter der
+           Schwelle, spart der Vorfilter die Schnittmenge. */
+        const gr = Math.max(A.sh.size, B.sh.size), kl = Math.min(A.sh.size, B.sh.size);
+        if (gr === 0 || kl / gr < DUP_SCHWELLE) continue;
+        const j = dupJaccard(A.sh, B.sh);
+        if (j >= DUP_SCHWELLE) paare.push({ a: A.song.id, b: B.song.id, art: 'text', wert: j });
+      } else {
+        /* §2.3 — ohne (genug) Text bleibt es beim Titel/Interpret-Vergleich aus spec/18 */
+        if (!A.t || !B.t || A.t !== B.t) continue;
+        if (A.i && B.i && A.i !== B.i) continue;
+        paare.push({ a: A.song.id, b: B.song.id, art: 'titel', wert: 1 });
+      }
+    }
+  }
+  paare.sort((x, y) => {
+    if (x.art !== y.art) return x.art === 'titel' ? -1 : 1;
+    return y.wert - x.wert;
+  });
+  const t1 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  return { paare, songs: DATA.songs.length, vergleiche, ms: Math.round(t1 - t0) };
+}
+
+let dupPaare = [];
+
+function dupZeilenzahl(song) {
+  return String(song.body || '').split('\n').filter(z => z.trim()).length;
+}
+
+function dupSongHtml(song, paarIdx, seite) {
+  const zeilen = dupZeilenzahl(song);
+  /* Zwei kurze Zeilen statt einer langen: sonst schiebt sich der Knopf am Handy
+     in eine eigene Zeile und jedes Paar wird unnoetig hoch. */
+  const meta = [
+    (song.bewertung || 0) + '★',
+    zeilen ? zeilen + ' Zeilen' : 'kein Text',
+    (song.tagIds || []).length + ' Tags'
+  ].join(' · ');
+  return '<div class="dup-song">' +
+    '<div class="dup-meta"><div class="dup-titel">' + esc(song.titel || '(ohne Titel)') + '</div>' +
+    '<div class="card-sub">' + (song.interpret ? esc(song.interpret) : 'ohne Interpret') + '</div>' +
+    '<div class="card-sub">' + meta + '</div></div>' +
+    '<button type="button" class="danger" data-dup-weg="' + paarIdx + '" data-seite="' + seite + '">In den Papierkorb</button>' +
+    '</div>';
+}
+
+function renderDupListe() {
+  const el = $('dupScanList');
+  if (dupPaare.length === 0) {
+    el.innerHTML = '<p class="no-results">Keine Dubletten gefunden.</p>' +
+      '<p class="hint">Inhaltlich verglichen werden nur Songs mit hinterlegtem Text. ' +
+      'Songs, die nur aus einem Link bestehen, werden über Titel und Interpret geprüft.</p>';
+    return;
+  }
+  /* Deckel gegen die Ausreisser: nach einem grossen Import koennen hunderte Paare
+     zusammenkommen; dann wird der Dialog traege, ohne dass es jemandem nuetzt. */
+  const zeige = dupPaare.slice(0, DUP_MAX_ANZEIGE);
+  const rest = dupPaare.length - zeige.length;
+  el.innerHTML = (rest > 0
+    ? '<p class="hint">Die ' + DUP_MAX_ANZEIGE + ' ähnlichsten Paare sind aufgeführt, ' +
+      rest + ' weitere nicht. Nach dem Aufräumen erneut suchen.</p>'
+    : '') + zeige.map((p, idx) => {
+    const sa = DATA.songs.find(s => s.id === p.a);
+    const sb = DATA.songs.find(s => s.id === p.b);
+    if (!sa || !sb) return '';
+    const kopf = p.art === 'titel'
+      ? 'Gleicher Titel und Interpret'
+      : Math.round(p.wert * 100) + ' % Textübereinstimmung';
+    return '<div class="dup-pair"><p class="dup-score">' + kopf + '</p>' +
+      dupSongHtml(sa, idx, 'a') + dupSongHtml(sb, idx, 'b') + '</div>';
+  }).join('');
+}
+
+function dupKopfText(erg) {
+  const n = dupPaare.length;
+  const rest = n === 0 ? 'keine Paare übrig' : (n === 1 ? 'noch 1 Paar' : 'noch ' + n + ' Paare');
+  return erg
+    ? erg.songs + ' Songs · ' + erg.vergleiche.toLocaleString('de-DE') + ' Paare · ' + erg.ms + ' ms geprüft'
+    : rest;
+}
+
+let dupLetzteErgebnis = null;
+
+function starteDublettenPruefung() {
+  closeSettingsPanel();
+  dupPaare = [];
+  $('dupScanKopf').textContent = 'Vergleiche …';
+  $('dupScanList').innerHTML = '';
+  $('dupScanDialog').showModal();
+  syncScrollRail();
+  /* Erst rendern lassen, dann rechnen — sonst haengt der Dialog unsichtbar am Lauf. */
+  setTimeout(() => {
+    const erg = findeDubletten();
+    dupLetzteErgebnis = erg;
+    dupPaare = erg.paare;
+    $('dupScanKopf').textContent = dupKopfText(erg);
+    renderDupListe();
+  }, 0);
+}
+
+$('dupScanList').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-dup-weg]');
+  if (!btn) return;
+  const paar = dupPaare[Number(btn.dataset.dupWeg)];
+  if (!paar) return;
+  const id = btn.dataset.seite === 'a' ? paar.a : paar.b;
+  const song = DATA.songs.find(s => s.id === id);
+  if (!song) return;
+  if (!confirm('"' + (song.titel || '(ohne Titel)') + '" in den Papierkorb verschieben? 30 Tage wiederherstellbar.')) return;
+  softDelete('song', song);
+  /* Jedes Paar mit diesem Song ist erledigt — auch die, die weiter unten stehen. */
+  dupPaare = dupPaare.filter(p => p.a !== id && p.b !== id);
+  $('dupScanKopf').textContent = dupKopfText(null);
+  renderDupListe();
+});
+
+/* spec/23 §1 — auch dieses Symbol als Inline-SVG, nicht als Emoji: zwei Blaetter uebereinander */
+$('btnDublettenIcon').innerHTML = svgIco(
+  '<rect x="2.6" y="2.6" width="10" height="12.8" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.6"/>' +
+  '<path d="M7.4 17.4h8a1.6 1.6 0 0 0 1.6-1.6V5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>', 18);
+
+$('btnDubletten').addEventListener('click', starteDublettenPruefung);
+$('dupScanCloseBtn').addEventListener('click', () => { $('dupScanDialog').close(); });
+/* deckt Escape mit ab; render() zeigt die Liste ohne die verschobenen Songs */
+$('dupScanDialog').addEventListener('close', () => { render(); });
+
+/* ============================================================
    Init
    ============================================================ */
 if (IST_ERSTER_START) { ladeDemoPaket(); saveData(DATA); }  /* spec/10 §1 */
 autoPurgeTrash();
 applyHeaderStil();       /* spec/12 §3 — vor dem ersten render(), damit der Kopf nicht aufblitzt */
+/* spec/23 §1 — das Theme-Icon steckt jetzt in syncThemeUI() statt als Zeichen im Markup;
+   ohne diesen Aufruf beim Start bliebe der Knopf bis zur ersten Theme-Änderung leer. */
+syncThemeUI();
 renderInstallHinweis();  /* spec/13 §1 */
 render();
 checkShareLink();
