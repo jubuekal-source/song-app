@@ -371,9 +371,12 @@ main { padding: 1rem; max-width: 900px; margin: 0 auto; }
   font-family: ui-monospace, "Courier New", monospace;
   -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain;
 }
-/* spec/24 §1 — die Zeile traegt jetzt 5 Sterne + ♥ + 🏷 + 🗑 + ⋮. Sterne minimal kleiner und
-   Umbruch erlaubt, damit das auf einer 280-px-Karte in eine Zeile passt und auf noch
-   schmaleren Karten sauber umbricht statt ueberzulaufen. */
+/* spec/26 §2 — Titelblock und Werkzeugspalte nebeneinander. min-width:0 ist entscheidend:
+   ohne das sprengt ein langer Titel die Spalte, statt darin umzubrechen. */
+.card-top { display: flex; align-items: flex-start; gap: .4rem; }
+.card-top .card-main { flex: 1 1 auto; min-width: 0; }
+.card-tools { flex: 0 0 auto; display: flex; align-items: center; gap: .1rem; }
+/* spec/26 §2 — hier stehen nur noch Sterne und Favorit (vorher zusaetzlich 🏷, 🗑 und ⋮). */
 .card-controls { display: flex; align-items: center; gap: .2rem; flex-wrap: wrap; }
 .stars { display: flex; }
 .stars .star, .card-controls .fav {
@@ -627,16 +630,20 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   border-radius: 2px; background: var(--border); opacity: .55;
 }
 #scrollRail.dragging { cursor: grabbing; }
+/* spec/26 §3 — Griff und Blase tragen die Kopffarbe (--rail-accent, gesetzt von
+   applyHeaderStil). Voll gefaerbt statt halbdurchsichtig: sonst scheint beim Ziehen der
+   Songtext durch und der Griff wirkt unruhig. */
 #scrollThumb {
   position: absolute; right: 4px; width: 14px; min-height: 44px;
-  border-radius: 7px; background: var(--text-muted); opacity: .6;
+  border-radius: 7px; background: var(--rail-accent, var(--accent)); opacity: .55;
   border: 2px solid var(--surface); box-sizing: border-box;
 }
-#scrollRail.dragging #scrollThumb { opacity: 1; background: var(--accent); }
+#scrollRail.dragging #scrollThumb { opacity: 1; }
 #scrollBubble {
-  position: fixed; right: 40px; z-index: 11;
+  /* spec/26 §3 — weit genug links, dass der ziehende Daumen den Buchstaben nicht verdeckt */
+  position: fixed; right: 78px; z-index: 11;
   min-width: 58px; padding: .45rem .7rem;
-  border-radius: 12px; background: var(--accent); color: #fff;
+  border-radius: 12px; background: var(--rail-accent, var(--accent)); color: #fff;
   font-size: 1.6rem; font-weight: 700; line-height: 1.1; text-align: center;
   box-shadow: 0 4px 16px rgba(0,0,0,.28);
   pointer-events: none;
@@ -655,8 +662,14 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   padding: .4rem 0; border-top: 1px dashed var(--border);
 }
 .dup-song:first-of-type { border-top: none; }
-.dup-song .dup-meta { flex: 1 1 auto; min-width: 0; }
+/* spec/26 §4 — der Titelblock ist ein Knopf, sieht aber aus wie Text */
+.dup-song .dup-meta {
+  all: unset; cursor: pointer; box-sizing: border-box;
+  flex: 1 1 auto; min-width: 0;
+}
 .dup-song .dup-titel { font-weight: 600; }
+.dup-pfeil { color: var(--text-muted); font-size: .85em; }
+.dup-text { flex: 1 1 100%; max-height: 240px; margin-top: .4rem; font-size: .8rem; }
 /* schmaler Knopf, damit er am Handy neben den Angaben bleibt statt eine eigene Zeile zu belegen */
 .dup-song button { flex: 0 0 auto; font-size: .82rem; padding: .35rem .6rem; }
 /* spec/13 §5 — vh zuerst, dvh daneben: auf iOS wandert die Adressleiste, dvh fängt das ab */
@@ -1255,7 +1268,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.8';
+const APP_VERSION = '1.0.9';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -1286,14 +1299,34 @@ const ICO_SONNE = svgIco(
   '<circle cx="10" cy="10" r="3.7" fill="none" stroke="currentColor" stroke-width="1.7"/>' +
   '<g stroke="currentColor" stroke-width="1.7" stroke-linecap="round">' +
   '<path d="M10 1.4v2.1M10 16.5v2.1M1.4 10h2.1M16.5 10h2.1M3.9 3.9l1.5 1.5M14.6 14.6l1.5 1.5M16.1 3.9l-1.5 1.5M5.4 14.6l-1.5 1.5"/></g>');
+/* spec/26 §1 — duenner gezeichnet: bei dieser kleinen Sichel wirkte 1.7 wie ein Klumpen. */
 const ICO_MOND = svgIco(
-  '<path d="M12.6 2.6a7.6 7.6 0 1 0 4.8 9.9 6.1 6.1 0 0 1-4.8-9.9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>');
+  '<path d="M7.31 2.89A7.6 7.6 0 1 0 16.95 13.09 7.3 7.3 0 0 1 7.31 2.89Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>');
 const ICO_SYSTEM = svgIco(
   '<circle cx="10" cy="10" r="7.3" fill="none" stroke="currentColor" stroke-width="1.7"/>' +
   '<path d="M10 2.7a7.3 7.3 0 0 0 0 14.6z" fill="currentColor"/>');
+/* spec/26 §1 — das Zahnrad war von Hand gezeichnet und dadurch sichtbar unrund. Jetzt gerechnet:
+   n gleich verteilte Zaehne, je Zahn zwei Punkte am Fuss und zwei an der Spitze, alle Winkel
+   aus derselben Formel. Symmetrie ist damit eine Eigenschaft der Konstruktion, kein Augenmass. */
+function zahnradPfad(zaehne, rTip, rRoot) {
+  const p = (winkel, r) => {
+    const b = (winkel - 90) * Math.PI / 180;
+    return (10 + r * Math.cos(b)).toFixed(2) + ' ' + (10 + r * Math.sin(b)).toFixed(2);
+  };
+  const schritt = 360 / zaehne;
+  const teile = [];
+  for (let i = 0; i < zaehne; i++) {
+    const a = i * schritt;
+    teile.push((i === 0 ? 'M' : 'L') + p(a - 16, rRoot));
+    teile.push('L' + p(a - 9, rTip));
+    teile.push('L' + p(a + 9, rTip));
+    teile.push('L' + p(a + 16, rRoot));
+  }
+  return teile.join('') + 'Z';
+}
 const ICO_ZAHNRAD = svgIco(
-  '<circle cx="10" cy="10" r="2.7" fill="none" stroke="currentColor" stroke-width="1.7"/>' +
-  '<path d="M10 1.7l1.3 2.2 2.5-.5.4 2.5 2.2 1.3-1.4 2.1 1.4 2.1-2.2 1.3-.4 2.5-2.5-.5L10 18.3l-1.3-2.2-2.5.5-.4-2.5-2.2-1.3 1.4-2.1-1.4-2.1 2.2-1.3.4-2.5 2.5.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>');
+  '<circle cx="10" cy="10" r="2.8" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+  '<path d="' + zahnradPfad(8, 8.4, 6.3) + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>');
 
 /* spec/24 §1 — dieselbe Begruendung wie oben, jetzt fuer die beiden Karten-Knoepfe:
    🏷 und 🗑 waren Emoji und haetten je Geraet ihre eigene Farbe mitgebracht. */
@@ -2218,11 +2251,27 @@ function songCardHtml(song) {
 
   return '' +
     '<article class="card" data-id="' + esc(song.id) + '">' +
-      '<button type="button" class="card-main" data-action="open" data-id="' + esc(song.id) + '">' +
-        '<div class="card-title">' + (esc(song.titel) || '(ohne Titel)') + '</div>' +
-        '<div class="card-sub">' + esc(song.interpret) + '</div>' +
-        (songIsStale(song) ? '<div class="card-stale-badge">' + esc(staleBadgeLabel(song)) + '</div>' : '') +
-      '</button>' +
+      /* spec/26 §2 — Werkzeuge oben rechts statt in der Sternenzeile. Titel und Werkzeuge sind
+         zwei Spalten: ein langer Titel bricht in seiner eigenen Spalte um, die Werkzeuge
+         bleiben oben rechts stehen. */
+      '<div class="card-top">' +
+        '<button type="button" class="card-main" data-action="open" data-id="' + esc(song.id) + '">' +
+          '<div class="card-title">' + (esc(song.titel) || '(ohne Titel)') + '</div>' +
+          '<div class="card-sub">' + esc(song.interpret) + '</div>' +
+          (songIsStale(song) ? '<div class="card-stale-badge">' + esc(staleBadgeLabel(song)) + '</div>' : '') +
+        '</button>' +
+        '<div class="card-tools">' +
+          '<button type="button" class="card-act" data-action="quickTags" data-id="' + esc(song.id) + '" aria-label="Tags ändern" title="Tags ändern">' + ICO_TAG + '</button>' +
+          '<button type="button" class="card-act card-act-del" data-action="delete" data-id="' + esc(song.id) + '" aria-label="Löschen" title="Löschen">' + ICO_PAPIERKORB + '</button>' +
+          '<details class="menu">' +
+            '<summary aria-label="Mehr">⋮</summary>' +
+            '<div class="menu-items">' +
+              '<button type="button" data-action="edit" data-id="' + esc(song.id) + '">Bearbeiten</button>' +
+              '<button type="button" data-action="addToSetlist" data-id="' + esc(song.id) + '">Zu Setlist hinzufügen</button>' +
+            '</div>' +
+          '</details>' +
+        '</div>' +
+      '</div>' +
       (tagsHtml ? '<div class="card-tags">' + tagsHtml + '</div>' : '') +
       /* spec/24 §1 — Tag-Schnellzugriff und Papierkorb direkt in der Karte: beides braucht man
          beim Aufraeumen dauernd, ueber das Dreipunkt-Menue kostet es je einen Klick mehr.
@@ -2230,18 +2279,10 @@ function songCardHtml(song) {
          jedes Geraet seine eigene Emoji-Farbe mit und .card-act-del blieb wirkungslos.
          spec/24 §2 — dafuer fallen "Buehnenmodus" (deckt der Antipper ab) und "Loeschen"
          (jetzt der Papierkorb daneben) aus dem Menue heraus. */
+      /* spec/26 §2 — hier bleiben nur noch Bewertung und Favorit: beides gehoert zusammen. */
       '<div class="card-controls">' +
         '<div class="stars">' + stars + '</div>' +
         '<button type="button" class="fav ' + (song.favorit ? 'active' : '') + '" data-action="fav" data-id="' + esc(song.id) + '" aria-label="Favorit">' + (song.favorit ? '♥' : '♡') + '</button>' +
-        '<button type="button" class="card-act" data-action="quickTags" data-id="' + esc(song.id) + '" aria-label="Tags ändern" title="Tags ändern">' + ICO_TAG + '</button>' +
-        '<button type="button" class="card-act card-act-del" data-action="delete" data-id="' + esc(song.id) + '" aria-label="Löschen" title="Löschen">' + ICO_PAPIERKORB + '</button>' +
-        '<details class="menu">' +
-          '<summary aria-label="Mehr">⋮</summary>' +
-          '<div class="menu-items">' +
-            '<button type="button" data-action="edit" data-id="' + esc(song.id) + '">Bearbeiten</button>' +
-            '<button type="button" data-action="addToSetlist" data-id="' + esc(song.id) + '">Zu Setlist hinzufügen</button>' +
-          '</div>' +
-        '</details>' +
       '</div>' +
     '</article>';
 }
@@ -3300,18 +3341,19 @@ const BILD_LAGERFEUER = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBD
 const BILD_LAGERFEUER_BG = 'linear-gradient(rgba(6,8,14,.22),rgba(6,8,14,.22)), url(' + BILD_LAGERFEUER + ')';
 
 const HEADER_PRESETS = [
-  { id: 'nachtblau',  label: 'Nachtblau (Standard)', bg: 'linear-gradient(135deg,#2f5d94 0%,#4c7dbb 50%,#6d9bd6 100%)', text: '#ffffff' },
-  { id: 'lagerfeuer', label: 'Lagerfeuer',           bg: 'linear-gradient(135deg,#a8341c 0%,#e2703a 50%,#f0a35e 100%)', text: '#ffffff' },
-  { id: 'wald',       label: 'Wald',                 bg: 'linear-gradient(135deg,#1f5f4a 0%,#2f8f6b 55%,#5ec49a 100%)', text: '#ffffff' },
-  { id: 'abendrot',   label: 'Abendrot',             bg: 'linear-gradient(135deg,#5c2b6b 0%,#a8437a 50%,#e0736b 100%)', text: '#ffffff' },
-  { id: 'nacht',      label: 'Nacht',                bg: 'linear-gradient(135deg,#2b3040 0%,#1e2128 60%,#12141a 100%)', text: '#ffffff' },
+  { id: 'nachtblau',  label: 'Nachtblau (Standard)', bg: 'linear-gradient(135deg,#2f5d94 0%,#4c7dbb 50%,#6d9bd6 100%)', text: '#ffffff', rail: '#4c7dbb' },
+  { id: 'lagerfeuer', label: 'Lagerfeuer',           bg: 'linear-gradient(135deg,#a8341c 0%,#e2703a 50%,#f0a35e 100%)', text: '#ffffff', rail: '#e2703a' },
+  { id: 'wald',       label: 'Wald',                 bg: 'linear-gradient(135deg,#1f5f4a 0%,#2f8f6b 55%,#5ec49a 100%)', text: '#ffffff', rail: '#2f8f6b' },
+  { id: 'abendrot',   label: 'Abendrot',             bg: 'linear-gradient(135deg,#5c2b6b 0%,#a8437a 50%,#e0736b 100%)', text: '#ffffff', rail: '#a8437a' },
+  /* rail heller als der Verlauf: #12141a waere im Dunkelmodus unsichtbar (spec/26 §3) */
+  { id: 'nacht',      label: 'Nacht',                bg: 'linear-gradient(135deg,#2b3040 0%,#1e2128 60%,#12141a 100%)', text: '#ffffff', rail: '#5b6172' },
   /* "swatch" nur dort noetig, wo die Kopffarbe selbst zu unauffaellig fuer einen Farbpunkt waere:
      var(--surface) waere im Dunkelmodus ein schwarzer Punkt auf schwarzem Grund. */
-  { id: 'schlicht',   label: 'Schlicht',             bg: 'var(--surface)',                                              text: 'var(--text)',
+  { id: 'schlicht',   label: 'Schlicht',             bg: 'var(--surface)',                                              text: 'var(--text)', rail: 'var(--accent)',
     swatch: 'linear-gradient(135deg,var(--surface) 0%,var(--surface) 48%,var(--border) 52%,var(--border) 100%)' },
   /* spec/15 §1 — Foto-Presets stehen am ENDE und werden separat als breite Vorschau gezeigt.
      Zwischen runden Farbpunkten war nicht zu erkennen, dass es sich um ein Bild handelt. */
-  { id: 'lagerfeuer_bild', label: 'Lagerfeuer', bg: BILD_LAGERFEUER_BG, text: '#ffffff',
+  { id: 'lagerfeuer_bild', label: 'Lagerfeuer', bg: BILD_LAGERFEUER_BG, text: '#ffffff', rail: '#e2703a',
     swatch: 'url(' + BILD_LAGERFEUER + ') center/cover', bild: true }
 ];
 
@@ -3345,6 +3387,9 @@ function applyHeaderStil() {
   const preset = getHeaderPreset(DATA.meta.headerStil);
   const bild = DATA.meta.headerBild || '';
   el.classList.toggle('gross', getHeaderHoehe() === 'gross');
+  /* spec/26 §3 — Scroll-Schieber greift die Kopffarbe auf. Bei einem eigenen Bild ist keine
+     Farbe bekannt (kein Raten), darum bleibt es dort bei der App-Grundfarbe. */
+  document.documentElement.style.setProperty('--rail-accent', bild ? 'var(--accent)' : (preset.rail || 'var(--accent)'));
   if (bild) {
     /* Dunkler Verlauf ueber dem Foto, damit Titel und Zahnrad auf jedem Bild lesbar bleiben. */
     el.style.setProperty('--hdr-bg', 'linear-gradient(rgba(8,10,16,.45),rgba(8,10,16,.45)), url("' + bild + '")');
@@ -5798,6 +5843,9 @@ function findeDubletten() {
 }
 
 let dupPaare = [];
+/* spec/26 §4 — welche Songtexte gerade aufgeklappt sind. Ueberlebt das Neurendern nach dem
+   Verschieben in den Papierkorb; beide Fassungen duerfen gleichzeitig offen sein. */
+let dupOffen = new Set();
 
 function dupZeilenzahl(song) {
   return String(song.body || '').split('\n').filter(z => z.trim()).length;
@@ -5812,12 +5860,27 @@ function dupSongHtml(song, paarIdx, seite) {
     zeilen ? zeilen + ' Zeilen' : 'kein Text',
     (song.tagIds || []).length + ' Tags'
   ].join(' · ');
+  /* spec/26 §4 — der Titelblock ist ein Knopf: Antippen klappt den Songtext auf. Ohne Blick in
+     den Text laesst sich nicht entscheiden, welche Fassung bleibt. Bewusst hier statt im
+     Buehnenmodus — der liegt im Top-Layer und wuerde die Ergebnisliste schliessen. */
+  const offen = dupOffen.has(song.id);
   return '<div class="dup-song">' +
-    '<div class="dup-meta"><div class="dup-titel">' + esc(song.titel || '(ohne Titel)') + '</div>' +
+    '<button type="button" class="dup-meta" data-dup-zeig="' + esc(song.id) + '" aria-expanded="' + (offen ? 'true' : 'false') + '">' +
+    '<div class="dup-titel">' + esc(song.titel || '(ohne Titel)') + ' <span class="dup-pfeil">' + (offen ? '▾' : '▸') + '</span></div>' +
     '<div class="card-sub">' + (song.interpret ? esc(song.interpret) : 'ohne Interpret') + '</div>' +
-    '<div class="card-sub">' + meta + '</div></div>' +
+    '<div class="card-sub">' + meta + '</div></button>' +
     '<button type="button" class="danger" data-dup-weg="' + paarIdx + '" data-seite="' + seite + '">In den Papierkorb</button>' +
+    (offen ? '<pre class="raw-body dup-text">' + esc(dupTextAnzeige(song)) + '</pre>' : '') +
     '</div>';
+}
+
+/* spec/26 §4 — ohne hinterlegten Text sind die Links das Einzige, was den Song unterscheidet. */
+function dupTextAnzeige(song) {
+  if (song.body) return song.body;
+  const links = (song.links || []).map(l => (l && l.url) ? l.url : String(l)).filter(Boolean);
+  return links.length
+    ? 'Kein Text hinterlegt. Links:\n' + links.join('\n')
+    : 'Kein Text und kein Link hinterlegt.';
 }
 
 function renderDupListe() {
@@ -5860,6 +5923,7 @@ let dupLetzteErgebnis = null;
 function starteDublettenPruefung() {
   closeSettingsPanel();
   dupPaare = [];
+  dupOffen = new Set();   /* spec/26 §4 — jeder Lauf startet zugeklappt */
   $('dupScanKopf').textContent = 'Vergleiche …';
   $('dupScanList').innerHTML = '';
   $('dupScanDialog').showModal();
@@ -5875,6 +5939,14 @@ function starteDublettenPruefung() {
 }
 
 $('dupScanList').addEventListener('click', (e) => {
+  /* spec/26 §4 — Songtext auf- und zuklappen */
+  const zeig = e.target.closest('button[data-dup-zeig]');
+  if (zeig) {
+    const sid = zeig.dataset.dupZeig;
+    if (dupOffen.has(sid)) dupOffen.delete(sid); else dupOffen.add(sid);
+    renderDupListe();
+    return;
+  }
   const btn = e.target.closest('button[data-dup-weg]');
   if (!btn) return;
   const paar = dupPaare[Number(btn.dataset.dupWeg)];
