@@ -753,7 +753,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     <button type="button" id="filterStaleToggle" title="Nur Songs zeigen, die seit über 90 Tagen (oder nie) gespielt wurden">🕑 Lange nicht gespielt</button>
   </div>
   <div class="filter-block">
-    <h3>Tag</h3>
+    <h3>Tags <span class="hint">(mehrere möglich)</span></h3>
     <div id="filterTagList"></div>
   </div>
   <div id="filterPanelActions">
@@ -1271,7 +1271,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.10';
+const APP_VERSION = '1.0.11';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -1672,7 +1672,7 @@ function alleSongsInPapierkorb() {
     DATA.papierkorb.push({ id: uuid(), typ: 'song', datensatz: song, geloeschtAm: jetzt });
   });
   DATA.songs = [];
-  activeTagFilter = null;
+  activeTagFilters = [];
   commit();
   alert(n + ' Songs liegen jetzt im Papierkorb.');
 }
@@ -1741,7 +1741,7 @@ function deleteTag(id) {
   if (!confirm('Tag "' + tag.name + '" löschen?\n\n' + zusatz)) return;
   DATA.tags = DATA.tags.filter(t => t.id !== id);
   DATA.songs.forEach(s => { s.tagIds = s.tagIds.filter(tid => tid !== id); });
-  if (activeTagFilter === id) activeTagFilter = null;
+  activeTagFilters = activeTagFilters.filter(tid => tid !== id);
   commit();
   renderTagsManager();
 }
@@ -2113,7 +2113,14 @@ function setlistDauerLabel(setlist) {
 /* ---------- Suche / Filter / Sortierung (spec/01 §6) ---------- */
 
 let searchTerm = '';
-let activeTagFilter = null;
+/* Mehrfach-Tagfilter (30.10.2026): Liste gewaehlter Tag-IDs, verknuepft mit UND —
+   ein Song erscheint nur, wenn er ALLE gewaehlten Tags traegt. Leere Liste = kein Tagfilter. */
+let activeTagFilters = [];
+function toggleTagFilter(tagId) {
+  activeTagFilters = activeTagFilters.includes(tagId)
+    ? activeTagFilters.filter(t => t !== tagId)
+    : activeTagFilters.concat(tagId);
+}
 let sortMode = 'titel';       // spec/06 §3 — 'titel' | 'zuletzt' | 'laengsteNicht', reiner UI-State
 let staleFilterActive = false; // spec/06 §3 — Toggle "Lange nicht gespielt"
 let favoritFilterActive = false; // spec/12 §1 — Toggle "Nur Favoriten"
@@ -2193,8 +2200,8 @@ function getVisibleSongs() {
       songLyricsSearchText(s).includes(q)
     );
   }
-  if (activeTagFilter) {
-    list = list.filter(s => s.tagIds.includes(activeTagFilter));
+  if (activeTagFilters.length) {
+    list = list.filter(s => activeTagFilters.every(tid => s.tagIds.includes(tid)));
   }
   if (staleFilterActive) {
     list = list.filter(songIsStale);
@@ -2811,7 +2818,7 @@ $('songList').addEventListener('click', (e) => {
   else if (action === 'quickTags') { closeCardMenus(); openQuickTagsDialog(id); }   /* spec/24 §3 */
   else if (action === 'filterTag') {
     const tagId = btn.dataset.tagid;
-    activeTagFilter = (activeTagFilter === tagId) ? null : tagId;
+    toggleTagFilter(tagId);
     render();
   }
 });
@@ -3598,7 +3605,7 @@ $('hdrBildEntfernen').addEventListener('click', () => {
 /* ---------- spec/09 §4 — Filter- & Sortier-Panel ---------- */
 
 function renderFilterButtonBadge() {
-  const n = (activeTagFilter ? 1 : 0) + (staleFilterActive ? 1 : 0) + (favoritFilterActive ? 1 : 0);
+  const n = activeTagFilters.length + (staleFilterActive ? 1 : 0) + (favoritFilterActive ? 1 : 0);
   $('btnFilter').classList.toggle('active', n > 0);
   $('filterCount').textContent = n > 0 ? ' (' + n + ')' : '';
 }
@@ -3606,11 +3613,11 @@ function renderFilterButtonBadge() {
 function renderActiveFilters() {
   const chips = [];
   if (searchTerm.trim()) chips.push({ art: 'search', label: '🔎 ' + searchTerm.trim() });
-  if (activeTagFilter) {
-    const tag = DATA.tags.find(t => t.id === activeTagFilter);
-    if (tag) chips.push({ art: 'tag', label: tag.name });
-    else activeTagFilter = null;
-  }
+  activeTagFilters = activeTagFilters.filter(tid => DATA.tags.some(t => t.id === tid));
+  activeTagFilters.forEach(tid => {
+    const tag = DATA.tags.find(t => t.id === tid);
+    chips.push({ art: 'tag', tagid: tid, label: tag.name });
+  });
   if (staleFilterActive) chips.push({ art: 'stale', label: '🕑 Lange nicht gespielt' });
   if (favoritFilterActive) chips.push({ art: 'favorit', label: '♥ Nur Favoriten' }); /* spec/12 §1 */
 
@@ -3618,14 +3625,14 @@ function renderActiveFilters() {
   if (chips.length === 0) { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   el.innerHTML = chips.map(c =>
-    '<button type="button" class="chip-x" data-clear="' + esc(c.art) + '">' + esc(c.label) + ' ✕</button>'
+    '<button type="button" class="chip-x" data-clear="' + esc(c.art) + '"' + (c.tagid ? ' data-tagid="' + esc(c.tagid) + '"' : '') + '>' + esc(c.label) + ' ✕</button>'
   ).join('') + (chips.length > 1 ? '<button type="button" class="reset-all" id="resetAllFilters">Alle zurücksetzen</button>' : '');
 }
 
 /* spec/21 §3 — "Zurücksetzen" im Panel ist deaktiviert, wenn ohnehin alles auf Grundeinstellung
    steht (Sortierung 'titel', kein Favoriten-/Stale-/Tag-Filter). Suche zaehlt hier nicht mit. */
 function syncFilterResetBtn() {
-  const grundzustand = sortMode === 'titel' && !staleFilterActive && !favoritFilterActive && !activeTagFilter;
+  const grundzustand = sortMode === 'titel' && !staleFilterActive && !favoritFilterActive && activeTagFilters.length === 0;
   $('filterResetBtn').disabled = grundzustand;
 }
 
@@ -3640,7 +3647,7 @@ $('activeFilters').addEventListener('click', (e) => {
   if (clearBtn) {
     const art = clearBtn.dataset.clear;
     if (art === 'search') { searchTerm = ''; $('searchInput').value = ''; }
-    else if (art === 'tag') activeTagFilter = null;
+    else if (art === 'tag') { activeTagFilters = activeTagFilters.filter(t => t !== clearBtn.dataset.tagid); renderFilterTagList(); }
     else if (art === 'stale') { staleFilterActive = false; $('filterStaleToggle').classList.remove('active'); }
     else if (art === 'favorit') { favoritFilterActive = false; $('filterFavToggle').classList.remove('active'); } /* spec/12 §1 */
     renderList(); renderFilterUI();
@@ -3648,7 +3655,7 @@ $('activeFilters').addEventListener('click', (e) => {
   }
   if (e.target.id === 'resetAllFilters') {
     searchTerm = ''; $('searchInput').value = '';
-    activeTagFilter = null;
+    activeTagFilters = []; renderFilterTagList();
     staleFilterActive = false; $('filterStaleToggle').classList.remove('active');
     favoritFilterActive = false; $('filterFavToggle').classList.remove('active'); /* spec/12 §1 */
     renderList(); renderFilterUI();
@@ -3657,10 +3664,10 @@ $('activeFilters').addEventListener('click', (e) => {
 
 function renderFilterTagList() {
   const el = $('filterTagList');
-  const alleRow = '<button type="button" class="filter-tag-row' + (!activeTagFilter ? ' on' : '') + '" data-tagid="">Alle Tags</button>';
+  const alleRow = '<button type="button" class="filter-tag-row' + (activeTagFilters.length === 0 ? ' on' : '') + '" data-tagid="">Alle Tags</button>';
   if (DATA.tags.length === 0) { el.innerHTML = alleRow; return; }
   el.innerHTML = alleRow + DATA.tags.map(t =>
-    '<button type="button" class="filter-tag-row' + (activeTagFilter === t.id ? ' on' : '') + '" data-tagid="' + esc(t.id) + '">' +
+    '<button type="button" class="filter-tag-row' + (activeTagFilters.includes(t.id) ? ' on' : '') + '" data-tagid="' + esc(t.id) + '">' +
       '<span class="filter-tag-dot" style="background:' + esc(t.farbe) + '"></span>' + esc(t.name) +
     '</button>'
   ).join('');
@@ -3669,7 +3676,8 @@ function renderFilterTagList() {
 $('filterTagList').addEventListener('click', (e) => {
   const btn = e.target.closest('.filter-tag-row');
   if (!btn) return;
-  activeTagFilter = btn.dataset.tagid || null;
+  /* Mehrfachauswahl: Zeile an/aus; "Alle Tags" leert die Auswahl */
+  if (btn.dataset.tagid) toggleTagFilter(btn.dataset.tagid); else activeTagFilters = [];
   renderFilterTagList();
   renderList(); renderFilterUI();
 });
@@ -3725,7 +3733,7 @@ $('filterResetBtn').addEventListener('click', () => {
   sortMode = 'titel';
   staleFilterActive = false; $('filterStaleToggle').classList.remove('active');
   favoritFilterActive = false; $('filterFavToggle').classList.remove('active');
-  activeTagFilter = null;
+  activeTagFilters = [];
   $('sortSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.sort === sortMode));
   renderFilterTagList();
   renderList(); renderFilterUI();
