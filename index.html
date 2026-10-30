@@ -535,6 +535,8 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 .stage-title .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stage-title .s { font-size: .78rem; color: #99a0ac; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #stagePos { font-size: .78rem; color: #99a0ac; flex: 0 0 auto; }
+/* YouTube-/Medien-Link direkt im Buehnenmodus (nur sichtbar, wenn medienUrl hinterlegt) */
+.stage-bar #stageYtBtn { background: #c4302b; border-color: #c4302b; color: #fff; font-size: .8rem; }
 #stageEmpty { padding: 2rem 1rem; color: #99a0ac; white-space: normal; }
 /* spec/17 §3 — Eintragsnotiz über dem Text, "Als Nächstes" am Textende (nur aus einer Setlist) */
 .stage-note, .stage-next {
@@ -880,6 +882,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
     </div>
     <span id="stagePos"></span>
     <button type="button" id="stageNextBtn" aria-label="Nächster Song">›</button>
+    <button type="button" id="stageYtBtn" title="Song auf YouTube öffnen" aria-label="Song auf YouTube öffnen" hidden>▶</button>
     <button type="button" id="stageCloseBtn" aria-label="Bühnenmodus schließen">✕</button>
   </div>
   <pre id="stageBody"></pre>
@@ -1268,7 +1271,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.9';
+const APP_VERSION = '1.0.10';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -4552,6 +4555,7 @@ function renderStage() {
   $('stageNextBtn').hidden = !STAGE.fromSetlist;
   $('stagePrevBtn').disabled = STAGE.index === 0;
   $('stageNextBtn').disabled = STAGE.index >= STAGE.ids.length - 1;
+  $('stageYtBtn').hidden = !isSafeUrl(song.medienUrl);
 
   const body = $('stageBody');
   applyStageFontSize();
@@ -4758,6 +4762,10 @@ document.addEventListener('visibilitychange', () => {
 
 /* Bedienung */
 $('stageCloseBtn').addEventListener('click', closeStage);
+$('stageYtBtn').addEventListener('click', () => {
+  const song = stageSong();
+  if (song && isSafeUrl(song.medienUrl)) window.open(song.medienUrl.trim(), '_blank', 'noopener,noreferrer');
+});
 $('stagePrevBtn').addEventListener('click', () => stageGoto(-1));
 $('stageNextBtn').addEventListener('click', () => stageGoto(1));
 $('stagePlayBtn').addEventListener('click', () => {
