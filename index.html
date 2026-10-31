@@ -416,19 +416,36 @@ dialog {
 dialog::backdrop { background: rgba(0,0,0,.5); }
 dialog h2 { margin-top: 0; }
 dialog form label { display: block; margin: .5rem 0; font-size: .9rem; }
-dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .75rem 0; }
+dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .75rem 0; min-width: 0; }
+/* spec/27 §1 — fieldset hat von Haus aus min-width:min-content und liess sich nicht schmaler
+   machen als seine breiteste Zeile (Tag-Eingabe + Knopf) -> der Block ragte rechts aus dem Dialog. */
+dialog { overflow-x: hidden; }
+dialog form, dialog fieldset, dialog label { max-width: 100%; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: 1rem; flex-wrap: wrap; }
+/* spec/27 §2 — drei Knoepfe in einer Reihe: Papierkorb links (nur Symbol), Abbrechen, Speichern.
+   Die obere Leiste klebt am Dialogrand und bleibt beim Scrollen sichtbar. */
+.dlg-bar { display: flex; gap: .5rem; align-items: stretch; flex-wrap: nowrap; }
+.dlg-bar button { flex: 1 1 0; min-width: 0; padding-left: .4rem; padding-right: .4rem; white-space: nowrap; }
+.dlg-bar button.dlg-del { flex: 0 0 auto; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; }
+.dlg-bar button[hidden] { display: none; }
+.dlg-bar-top {
+  position: sticky; top: -1rem; z-index: 5; margin: -1rem -1rem .6rem; padding: .6rem 1rem .5rem;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.dlg-bar-bottom { margin-top: 1rem; }
+#f_ytSearchBtn { display: inline-flex; align-items: center; gap: .4rem; }
 .error { color: var(--danger); }
 .hint { color: var(--text-muted); font-size: .9rem; }
 
 .tag-picker { margin-top: .5rem; }
 .chip-checkbox {
+  max-width: 100%; overflow-wrap: anywhere;
   display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; margin: .2rem .2rem 0 0;
   border-radius: 999px; background: color-mix(in srgb, var(--chip-color, var(--accent)) 20%, transparent);
   font-size: .85rem;
 }
 .tag-add { display: flex; gap: .4rem; margin-top: .5rem; align-items: center; }
-.tag-add input[type=text] { flex: 1 1 auto; min-width: 0; width: auto; }
+.tag-add input[type=text] { flex: 1 1 0; min-width: 0; width: auto; }
 .tag-add input[type=color] { flex: 0 0 auto; width: 44px; padding: 0; }
 .tag-add button { flex: 0 0 auto; white-space: nowrap; }
 
@@ -525,7 +542,46 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
   bottom: 0; padding-bottom: calc(env(safe-area-inset-bottom) + .4rem);
   border-top: 1px solid #23262e; flex-wrap: wrap; justify-content: center;
 }
-#stage.bars-hidden .stage-bar { opacity: 0; visibility: hidden; pointer-events: none; }
+#stage.bars-hidden .stage-bar, #stage.bars-hidden #stageBackBtn { opacity: 0; visibility: hidden; pointer-events: none; }
+/* spec/27 §3 — Link-Knopf (Kettensymbol), nur sichtbar wenn quelleUrl gesetzt */
+.stage-bar #stageLinkBtn { background: #1f3550; border-color: #4c7dbb; color: #dce9f8; display: inline-flex; align-items: center; justify-content: center; }
+.stage-bar #stageLinkBtn[hidden] { display: none; }
+/* spec/27 §4 — Titel antippen = Info-Karte; kleines Info-Symbol zeigt das an */
+.stage-title { cursor: pointer; }
+.stage-title .t-row { display: flex; align-items: center; gap: .35rem; min-width: 0; }
+.stage-title .t-row .t { flex: 0 1 auto; min-width: 0; }
+.stage-title .info-ico { flex: 0 0 auto; color: #8fb4e3; display: inline-flex; }
+/* spec/27 §5 — Zurueck-Pfeil unten rechts, mit Abstand zum Rand (einhaendig), blendet mit den Leisten aus */
+#stageBackBtn {
+  position: absolute; z-index: 2; right: 1.4rem; bottom: calc(var(--footH, 60px) + .9rem);
+  width: 50px; height: 50px; min-width: 50px; min-height: 50px; padding: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(27,30,37,.92); color: #f2f4f7; border: 1px solid #3a3f4a;
+  transition: opacity .2s ease, visibility .2s ease;
+}
+/* spec/27 §4 — Info-Karte: liegt unter der Kopfleiste ueber dem Songtext, schliesst nie von selbst */
+#infoCard {
+  position: absolute; left: 0; right: 0; top: var(--headH, 58px); z-index: 1;
+  max-height: 55%; overflow-y: auto; padding: .8rem .9rem 1rem;
+  background: #12161d; color: #e8ecf2; border-bottom: 2px solid #4c7dbb;
+  box-shadow: 0 8px 18px rgba(0,0,0,.5);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+#infoCard[hidden] { display: none; }
+#infoCard .ic-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .4rem; }
+#infoCard h3 { margin: 0; font-size: 1rem; }
+#infoCard .ic-ro { display: grid; grid-template-columns: auto 1fr; gap: .15rem .8rem; margin: 0 0 .6rem; font-size: .9rem; }
+#infoCard .ic-ro dt { color: #99a0ac; }
+#infoCard .ic-ro dd { margin: 0; }
+#infoCard .ic-hint { background: #2a2412; border: 1px solid #5c4a17; color: #f5dd9a; border-radius: 8px; padding: .4rem .6rem; font-size: .85rem; margin: 0 0 .6rem; }
+#infoCard label { display: block; font-size: .85rem; color: #b6bcc7; margin: .4rem 0; }
+#infoCard input, #infoCard textarea { background: #1b1e25; color: #f2f4f7; border-color: #2f333c; margin-top: .15rem; }
+#infoCard .ic-row2 { display: flex; gap: .6rem; }
+#infoCard .ic-row2 label { flex: 1 1 0; min-width: 0; }
+#infoCard .ic-actions { display: flex; gap: .5rem; margin-top: .6rem; }
+#infoCard .ic-actions button { flex: 1 1 0; background: #1b1e25; color: #f2f4f7; border-color: #2f333c; }
+#infoCard .ic-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+#infoCard .ic-close { min-height: 38px; min-width: 38px; background: #1b1e25; color: #f2f4f7; border-color: #2f333c; }
 .stage-bar button {
   background: #1b1e25; color: #f2f4f7; border-color: #2f333c;
   min-height: 38px; min-width: 38px; padding: .25rem .5rem; font-size: .95rem;
@@ -876,16 +932,39 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 <div id="stage" hidden>
   <div class="stage-bar" id="stageHead">
     <button type="button" id="stagePrevBtn" aria-label="Vorheriger Song">‹</button>
-    <div class="stage-title">
-      <div class="t" id="stageTitle"></div>
+    <div class="stage-title" id="stageTitleBox" role="button" tabindex="0" aria-label="Song-Info öffnen">
+      <div class="t-row"><div class="t" id="stageTitle"></div><span class="info-ico" aria-hidden="true"><svg viewBox="0 0 20 20" width="17" height="17"><circle cx="10" cy="10" r="7.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="10" cy="6.3" r="1.1" fill="currentColor"/></svg></span></div>
       <div class="s" id="stageSub"></div>
     </div>
     <span id="stagePos"></span>
     <button type="button" id="stageNextBtn" aria-label="Nächster Song">›</button>
     <button type="button" id="stageYtBtn" title="Song auf YouTube öffnen" aria-label="Song auf YouTube öffnen" hidden>▶</button>
+    <button type="button" id="stageLinkBtn" title="Externen Link öffnen" aria-label="Externen Link öffnen" hidden><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M8.6 11.4a3.2 3.2 0 0 0 4.5 0l2.4-2.4a3.2 3.2 0 0 0-4.5-4.5l-.9.9M11.4 8.6a3.2 3.2 0 0 0-4.5 0L4.5 11a3.2 3.2 0 0 0 4.5 4.5l.9-.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
     <button type="button" id="stageCloseBtn" aria-label="Bühnenmodus schließen">✕</button>
   </div>
   <pre id="stageBody"></pre>
+  <!-- spec/27 §4 — Song-Info-Karte -->
+  <section id="infoCard" hidden aria-label="Song-Info">
+    <div class="ic-head"><h3>Song-Info</h3><button type="button" class="ic-close" id="icCloseBtn" aria-label="Schließen">✕</button></div>
+    <dl class="ic-ro" id="icReadonly"></dl>
+    <p class="ic-hint" id="icSetlistHint" hidden></p>
+    <div class="ic-row2">
+      <label>Tonart, wie wir sie singen
+        <input type="text" id="ic_tonartWir" maxlength="10">
+      </label>
+      <label>Kapo
+        <input type="number" id="ic_kapo" min="0" max="12" step="1" inputmode="numeric">
+      </label>
+    </div>
+    <label>Notiz
+      <textarea id="ic_notiz" rows="2"></textarea>
+    </label>
+    <div class="ic-actions">
+      <button type="button" id="icCancelBtn">Abbrechen</button>
+      <button type="button" id="icSaveBtn" class="primary">Speichern</button>
+    </div>
+  </section>
+  <button type="button" id="stageBackBtn" aria-label="Zurück zur Songliste" title="Zurück zur Songliste"><svg viewBox="0 0 20 20" width="24" height="24" aria-hidden="true"><path d="M16 10H4.5M9.5 4.8 4.3 10l5.2 5.2" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <div class="stage-bar" id="stageFoot">
     <button type="button" id="stagePlayBtn" aria-label="Auto-Scroll starten">▶</button>
     <input type="range" id="stageTempo" min="0" max="100" step="1" value="0" aria-label="Auto-Scroll-Tempo">
@@ -905,8 +984,14 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 <!-- spec/01 §7 -->
 <dialog id="songDialog">
   <form id="songForm" novalidate>
-    <h2 id="songDialogTitle">Song</h2>
+    <!-- spec/27 §2 — obere Leiste, bleibt beim Scrollen am Rand; gleiche Knoepfe wie unten -->
+    <div class="dlg-bar dlg-bar-top" id="songBarTop">
+      <button type="button" class="danger dlg-del" id="songDeleteBtnTop" title="Song löschen" aria-label="Song löschen" hidden><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M3.4 5.6h13.2M8 3.2h4M5.6 5.6l.8 11.2h7.2l.8-11.2M8.4 8.4v5.6M11.6 8.4v5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <button type="button" id="songCancelBtnTop">Abbrechen</button>
+      <button type="submit" class="primary" id="songSaveBtnTop">Speichern</button>
+    </div>
 
+    <h2 id="songDialogTitle">Song</h2>
     <!-- spec/11 §2 — erste und offensichtlichste Moeglichkeit: einfuegen statt tippen -->
     <fieldset id="smartPasteBox">
       <legend>Song einfügen</legend>
@@ -967,6 +1052,9 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
       <label>Medien-Link (YouTube/Spotify)
         <input type="url" id="f_medienUrl" placeholder="https://…">
       </label>
+      <div class="body-tools">
+        <button type="button" id="f_ytSearchBtn" title="YouTube-Suche mit Titel und Interpret in neuem Tab öffnen"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="8.6" cy="8.6" r="5.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m12.6 12.6 4.2 4.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg> YouTube suchen</button>
+      </div>
     </fieldset>
 
     <fieldset>
@@ -1024,8 +1112,8 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 
     <p id="songFormError" class="error" hidden></p>
 
-    <div class="dialog-actions">
-      <button type="button" id="songDeleteBtn" class="danger" hidden>Löschen</button>
+    <div class="dlg-bar dlg-bar-bottom" id="songBarBottom">
+      <button type="button" id="songDeleteBtn" class="danger dlg-del" title="Song löschen" aria-label="Song löschen" hidden><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M3.4 5.6h13.2M8 3.2h4M5.6 5.6l.8 11.2h7.2l.8-11.2M8.4 8.4v5.6M11.6 8.4v5.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button type="button" id="songCancelBtn">Abbrechen</button>
       <button type="submit" class="primary">Speichern</button>
     </div>
@@ -1271,7 +1359,7 @@ dialog fieldset { border: 1px solid var(--border); border-radius: 8px; margin: .
 /* spec/16 §2 — EINZIGE Quelle der App-Version.
    Sie steckt im Cache-Namen des Service Workers und in seiner Registrierungs-URL.
    ⚠ Bei JEDEM Ausliefern erhöhen — sonst bekommen Nutzer weiter die alte Fassung. */
-const APP_VERSION = '1.0.11';
+const APP_VERSION = '1.0.12';
 
 /* spec/00 §3.1 */
 const LS_PREFIX = 'songapp_';
@@ -2391,6 +2479,7 @@ function openSongDialog(id) {
 
   $('songDialogTitle').textContent = song ? 'Song bearbeiten' : 'Neuer Song';
   $('songDeleteBtn').hidden = !song;
+  $('songDeleteBtnTop').hidden = !song;   /* spec/27 §2 */
   $('songFormError').hidden = true;
 
   $('f_body').classList.remove('body-fullscreen');   // spec/05 — nie im Vollbild-Zustand oeffnen
@@ -2427,6 +2516,7 @@ function openSongDialog(id) {
   renderFormStars();
   renderTagCheckboxes();
   renderHistorieSection(song);
+  songFormStart = JSON.stringify(readSongForm());   /* spec/27 §6 — Ausgangsstand fuer die Rueckfrage */
   updateDupHint();   /* spec/18 §2 */
 
   $('songDialog').showModal();
@@ -3847,11 +3937,27 @@ $('songForm').addEventListener('submit', (e) => {
 });
 
 $('songCancelBtn').addEventListener('click', () => $('songDialog').close());
-$('songDeleteBtn').addEventListener('click', () => {
+$('songCancelBtnTop').addEventListener('click', () => $('songDialog').close());
+function songLoeschenKlick() {
   if (editingSongId) {
     deleteSong(editingSongId);
     $('songDialog').close();
   }
+}
+$('songDeleteBtn').addEventListener('click', songLoeschenKlick);
+$('songDeleteBtnTop').addEventListener('click', songLoeschenKlick);
+
+/* spec/27 §6 — Zurueck-Geste/Esc schliesst den Dialog nicht mehr stillschweigend, wenn getippt wurde */
+let songFormStart = '';
+$('songDialog').addEventListener('cancel', (e) => {
+  if (JSON.stringify(readSongForm()) !== songFormStart && !confirm('Ungespeicherte Änderungen verwerfen?')) e.preventDefault();
+});
+
+/* spec/27 §7 — YouTube-Suche mit Titel und Interpret (kein Zugangsschluessel noetig, normale Suchseite) */
+$('f_ytSearchBtn').addEventListener('click', () => {
+  const q = ($('f_titel').value.trim() + ' ' + $('f_interpret').value.trim()).trim();
+  if (!q) { alert('Bitte zuerst einen Titel eintragen.'); $('f_titel').focus(); return; }
+  window.open('https://www.youtube.com/results?search_query=' + encodeURIComponent(q), '_blank', 'noopener,noreferrer');
 });
 
 /* Papierkorb */
@@ -4524,6 +4630,7 @@ function openStage(ids, index, fromSetlist, keys, setlistId, notes) {
 }
 
 function closeStage() {
+  $('infoCard').hidden = true;   /* spec/27 §4 */
   stopStageScroll();
   releaseStageWakeLock();
   stageExitFullscreen();
@@ -4564,6 +4671,7 @@ function renderStage() {
   $('stagePrevBtn').disabled = STAGE.index === 0;
   $('stageNextBtn').disabled = STAGE.index >= STAGE.ids.length - 1;
   $('stageYtBtn').hidden = !isSafeUrl(song.medienUrl);
+  $('stageLinkBtn').hidden = !isSafeUrl(song.quelleUrl);   /* spec/27 §3 */
 
   const body = $('stageBody');
   applyStageFontSize();
@@ -4732,7 +4840,11 @@ function stageGoto(delta) {
 function showStageBars() {
   const el = $('stage');
   el.classList.remove('bars-hidden');
+  /* spec/27 §4/§5 — Hoehen der Leisten fuer Info-Karte und Zurueck-Pfeil */
+  el.style.setProperty('--headH', $('stageHead').offsetHeight + 'px');
+  el.style.setProperty('--footH', $('stageFoot').offsetHeight + 'px');
   if (STAGE.barsTimer) clearTimeout(STAGE.barsTimer);
+  if (!$('infoCard').hidden) { STAGE.barsTimer = null; return; }   /* Karte offen: Leisten bleiben stehen */
   STAGE.barsTimer = setTimeout(() => {
     if (stageIsOpen()) el.classList.add('bars-hidden');
   }, 4000);
@@ -4768,14 +4880,115 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && stageIsOpen() && !STAGE.wakeLock) requestStageWakeLock();
 });
 
+/* spec/27 §3–§5 — Link-Knopf, Info-Karte, Zurueck-Pfeil */
+$('stageLinkBtn').addEventListener('click', () => {
+  const song = stageSong();
+  if (song && isSafeUrl(song.quelleUrl)) window.open(song.quelleUrl.trim(), '_blank', 'noopener,noreferrer');
+});
+
+function infoCardOffen() { return !$('infoCard').hidden; }
+function infoCardWerte() {
+  return JSON.stringify([$('ic_tonartWir').value.trim(), $('ic_kapo').value.trim(), $('ic_notiz').value.trim()]);
+}
+let infoCardStart = '';
+function infoCardGeaendert() { return infoCardOffen() && infoCardWerte() !== infoCardStart; }
+
+function dauerText(sek) {
+  const n = Number(sek);
+  if (!(n > 0)) return '';
+  return Math.floor(n / 60) + ':' + String(Math.round(n % 60)).padStart(2, '0') + ' min';
+}
+
+function openInfoCard() {
+  const song = stageSong();
+  if (!song) return;
+  /* Nur ausfuellen, was eingetragen ist; wird nur gelesen (aendern: Song bearbeiten) */
+  const zeilen = [
+    ['Tonart Original', song.tonartOriginal],
+    ['BPM', song.bpm],
+    ['Taktart', song.taktart],
+    ['Dauer', dauerText(song.dauerSek)],
+    ['CCLI', song.ccli]
+  ].filter(z => z[1] !== null && z[1] !== undefined && String(z[1]).trim() !== '');
+  $('icReadonly').innerHTML = zeilen.map(z => '<dt>' + esc(z[0]) + '</dt><dd>' + esc(String(z[1])) + '</dd>').join('');
+  $('icReadonly').hidden = zeilen.length === 0;
+
+  const hint = $('icSetlistHint');
+  const slKey = STAGE.fromSetlist ? (STAGE.keys[STAGE.index] || '') : '';
+  if (slKey && slKey !== (song.tonartWir || '')) {
+    hint.textContent = 'In dieser Setlist wird der Song in ' + slKey + ' gesungen. Die Felder unten gelten für den Song selbst.';
+    hint.hidden = false;
+  } else hint.hidden = true;
+
+  $('ic_tonartWir').value = song.tonartWir || '';
+  $('ic_kapo').value = song.kapo ? song.kapo : '';
+  $('ic_notiz').value = song.notiz || '';
+  infoCardStart = infoCardWerte();
+  $('infoCard').hidden = false;
+  $('infoCard').scrollTop = 0;
+  showStageBars();   // Leisten einblenden und stehen lassen
+}
+
+function closeInfoCard() {
+  $('infoCard').hidden = true;
+  $('stage').classList.remove('bars-hidden');
+  if (stageIsOpen()) showStageBars();
+}
+
+/* true = weitermachen duerfen. Bei ungespeicherten Aenderungen einmal nachfragen. */
+function infoCardFreigabe() {
+  if (!infoCardOffen()) return true;
+  if (infoCardGeaendert() && !confirm('Änderungen in der Song-Info verwerfen?')) return false;
+  closeInfoCard();
+  return true;
+}
+
+function saveInfoCard() {
+  const song = stageSong();
+  if (!song) return;
+  const kapoRoh = $('ic_kapo').value.trim();
+  let kapo = kapoRoh === '' ? 0 : Math.round(Number(kapoRoh));
+  if (!(kapo >= 0 && kapo <= 12)) kapo = 0;
+  updateSong(song.id, {
+    tonartWir: $('ic_tonartWir').value.trim(),
+    kapo: kapo,
+    notiz: $('ic_notiz').value.trim()
+  });
+  const s2 = stageSong();
+  const tonart = (STAGE.fromSetlist ? STAGE.keys[STAGE.index] : '') || s2.tonartWir || s2.tonartOriginal || '';
+  $('stageSub').textContent = [s2.interpret, tonart ? 'Tonart ' + tonart : ''].filter(Boolean).join(' · ');
+  closeInfoCard();
+}
+
+$('stageTitleBox').addEventListener('click', () => { if (infoCardOffen()) { if (infoCardFreigabe()) {} } else openInfoCard(); });
+$('stageTitleBox').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('stageTitleBox').click(); }
+});
+$('icCloseBtn').addEventListener('click', infoCardFreigabe);
+$('icCancelBtn').addEventListener('click', closeInfoCard);
+$('icSaveBtn').addEventListener('click', saveInfoCard);
+$('stageBackBtn').addEventListener('click', () => { if (infoCardFreigabe()) closeStage(); });
+
+/* spec/27 §4/§5 — Leistenhoehen laufend nachfuehren (Fussleiste bricht je nach Breite um) */
+function syncStageBarHeights() {
+  const el = $('stage');
+  el.style.setProperty('--headH', $('stageHead').offsetHeight + 'px');
+  el.style.setProperty('--footH', $('stageFoot').offsetHeight + 'px');
+}
+if (window.ResizeObserver) {
+  const ro = new ResizeObserver(syncStageBarHeights);
+  ro.observe($('stageHead')); ro.observe($('stageFoot'));
+}
+window.addEventListener('resize', syncStageBarHeights);
+
 /* Bedienung */
-$('stageCloseBtn').addEventListener('click', closeStage);
+$('stageCloseBtn').addEventListener('click', () => { if (infoCardFreigabe()) closeStage(); });
 $('stageYtBtn').addEventListener('click', () => {
   const song = stageSong();
   if (song && isSafeUrl(song.medienUrl)) window.open(song.medienUrl.trim(), '_blank', 'noopener,noreferrer');
 });
-$('stagePrevBtn').addEventListener('click', () => stageGoto(-1));
-$('stageNextBtn').addEventListener('click', () => stageGoto(1));
+$('stagePrevBtn').addEventListener('click', () => { if (infoCardFreigabe()) stageGoto(-1); });
+$('stageNextBtn').addEventListener('click', () => { if (infoCardFreigabe()) stageGoto(1); });
 $('stagePlayBtn').addEventListener('click', () => {
   if (STAGE.running) stopStageScroll(); else startStageScroll();
   showStageBars();
